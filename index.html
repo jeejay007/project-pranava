@@ -1,0 +1,1124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="Project Pranava"/>
+<meta name="theme-color" content="#0F172A"/>
+<title>Project Pranava</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Fira+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --pre:#D97706;--pre-light:#FEF3C7;--pre-mid:#F59E0B;--pre-dark:#92400E;
+  --con:#2563EB;--con-light:#DBEAFE;--con-mid:#3B82F6;--con-dark:#1E40AF;
+  --post:#059669;--post-light:#D1FAE5;--post-mid:#10B981;--post-dark:#065F46;
+  --bg:#F8FAFC;--surface:#FFFFFF;--border:#E2E8F0;--border2:#F1F5F9;
+  --text:#0F172A;--muted:#64748B;--muted2:#94A3B8;
+  --danger:#EF4444;--danger-light:#FEE2E2;
+  --success:#059669;--success-light:#D1FAE5;
+  --radius:12px;--radius-sm:8px;--radius-lg:16px;
+  --shadow:0 1px 3px rgba(0,0,0,.07),0 1px 2px rgba(0,0,0,.04);
+  --shadow-md:0 4px 20px rgba(0,0,0,.10);
+  --shadow-lg:0 12px 40px rgba(0,0,0,.16);
+  --font-head:'Fira Code',monospace;--font-body:'Fira Sans',sans-serif;
+  --tab-h:64px;
+  --safe-top:env(safe-area-inset-top,0px);
+  --safe-bottom:env(safe-area-inset-bottom,0px);
+  --safe-left:env(safe-area-inset-left,0px);
+  --safe-right:env(safe-area-inset-right,0px);
+  --z-tab:100;--z-modal:1000;--z-toast:2000;--z-sheet:900;
+}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+body{
+  font-family:var(--font-body);background:var(--bg);color:var(--text);
+  font-size:15px;line-height:1.6;min-height:100dvh;
+  overscroll-behavior:none;overflow-x:hidden;
+  padding-bottom:calc(var(--tab-h) + var(--safe-bottom));
+  padding-top:var(--safe-top);
+}
+
+/* ══ TOP BAR ══ */
+.top-bar{
+  position:sticky;top:0;z-index:50;
+  background:rgba(248,250,252,.92);backdrop-filter:saturate(180%) blur(16px);
+  -webkit-backdrop-filter:saturate(180%) blur(16px);
+  border-bottom:1px solid var(--border);
+  padding:12px 16px 10px;
+  display:flex;align-items:center;justify-content:space-between;
+  padding-top:calc(12px + var(--safe-top));
+  margin-top:calc(-1 * var(--safe-top));
+}
+.top-bar-title{font-family:var(--font-head);font-size:1.05rem;font-weight:700;letter-spacing:-.04em}
+.top-bar-title span{color:var(--post)}
+.top-bar-sub{font-size:.7rem;color:var(--muted);font-weight:400;margin-top:1px}
+.top-bar-actions{display:flex;gap:8px}
+.top-btn{
+  width:36px;height:36px;border-radius:10px;border:1px solid var(--border);
+  background:var(--surface);display:flex;align-items:center;justify-content:center;
+  cursor:pointer;touch-action:manipulation;transition:all .12s;
+}
+.top-btn:active{transform:scale(.92);background:var(--border)}
+.top-btn svg{width:18px;height:18px;color:var(--muted)}
+
+/* ══ BOTTOM TAB BAR ══ */
+.tab-bar{
+  position:fixed;bottom:0;left:0;right:0;z-index:var(--z-tab);
+  background:rgba(255,255,255,.96);backdrop-filter:saturate(180%) blur(20px);
+  -webkit-backdrop-filter:saturate(180%) blur(20px);
+  border-top:1px solid var(--border);
+  display:flex;align-items:stretch;
+  height:calc(var(--tab-h) + var(--safe-bottom));
+  padding-bottom:var(--safe-bottom);
+  padding-left:var(--safe-left);padding-right:var(--safe-right);
+}
+.tab-item{
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:3px;cursor:pointer;touch-action:manipulation;
+  padding:8px 4px;color:var(--muted2);
+  transition:color .15s;min-height:44px;
+  -webkit-user-select:none;user-select:none;
+}
+.tab-item.active{color:var(--post)}
+.tab-item.active.phase-pre{color:var(--pre)}
+.tab-item.active.phase-con{color:var(--con)}
+.tab-item.active.phase-post{color:var(--post)}
+.tab-icon{width:24px;height:24px;transition:transform .15s}
+.tab-item.active .tab-icon{transform:translateY(-2px)}
+.tab-label{font-size:.65rem;font-weight:600;letter-spacing:.01em;line-height:1}
+.tab-badge{
+  position:absolute;top:6px;right:calc(50% - 20px);
+  background:var(--danger);color:#fff;font-size:.58rem;font-weight:700;
+  min-width:16px;height:16px;border-radius:8px;display:flex;align-items:center;justify-content:center;
+  padding:0 4px;border:2px solid var(--surface);
+}
+.tab-item{position:relative}
+
+/* ══ VIEWS ══ */
+.view{display:none;padding:16px;animation:fadeUp .2s ease}
+.view.active{display:block}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+/* ══ SECTION HEADER ══ */
+.section-header{margin-bottom:16px}
+.section-header h1{font-family:var(--font-head);font-size:1.25rem;font-weight:700;letter-spacing:-.04em}
+.section-header p{color:var(--muted);font-size:.82rem;margin-top:2px}
+
+/* ══ KPI GRID ══ */
+.kpi-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+.kpi{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+  padding:14px 16px;position:relative;overflow:hidden;box-shadow:var(--shadow);
+}
+.kpi-label{font-size:.68rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.kpi-value{font-family:var(--font-head);font-size:1.35rem;font-weight:700;margin:4px 0 2px;letter-spacing:-.04em;line-height:1.2}
+.kpi-sub{font-size:.72rem;color:var(--muted);line-height:1.3}
+.kpi-bar{position:absolute;bottom:0;left:0;height:3px;transition:width .5s ease;border-radius:0 2px 0 var(--radius)}
+
+/* ══ CARDS ══ */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:14px;overflow:hidden}
+.card-header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border2)}
+.card-title{font-family:var(--font-head);font-size:.88rem;font-weight:700;display:flex;align-items:center;gap:8px}
+.pill{background:var(--bg);border:1px solid var(--border);font-size:.68rem;font-weight:600;padding:2px 8px;border-radius:20px;color:var(--muted)}
+
+/* ══ PHASE HERO ══ */
+.phase-hero{
+  border-radius:var(--radius);padding:18px;margin-bottom:14px;
+  background:var(--surface);border:1px solid var(--border);box-shadow:var(--shadow);
+}
+.phase-hero-name{font-family:var(--font-head);font-size:1.1rem;font-weight:700;letter-spacing:-.04em;margin-bottom:2px}
+.phase-hero-desc{font-size:.78rem;color:var(--muted);margin-bottom:14px}
+.phase-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px}
+.phase-stat{text-align:center}
+.phase-stat-v{font-family:var(--font-head);font-size:.95rem;font-weight:700;line-height:1.2}
+.phase-stat-l{font-size:.65rem;color:var(--muted);font-weight:500;margin-top:1px}
+.phase-dates{display:flex;gap:12px;margin-bottom:10px}
+.phase-date-item{flex:1;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 10px}
+.phase-date-label{font-size:.65rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+.phase-date-val{font-size:.82rem;font-weight:600;margin-top:2px}
+.prog-wrap{display:flex;align-items:center;gap:10px}
+.prog-track{flex:1;height:8px;background:var(--border);border-radius:4px;overflow:hidden}
+.prog-fill{height:100%;border-radius:4px;transition:width .5s ease}
+.prog-pct{font-size:.75rem;font-weight:700;min-width:32px;text-align:right}
+
+/* ══ BUDGET CAP BANNER ══ */
+.budget-banner{
+  display:flex;align-items:center;justify-content:space-between;
+  background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);
+  padding:10px 14px;margin-bottom:14px;gap:10px;
+}
+.budget-banner-left{font-size:.78rem;color:var(--muted);font-weight:500}
+.budget-banner-val{font-family:var(--font-head);font-size:.9rem;font-weight:700;margin-top:1px}
+.btn-set{font-size:.72rem;font-weight:600;color:var(--con);background:var(--con-light);border:none;padding:6px 12px;border-radius:8px;cursor:pointer;touch-action:manipulation;white-space:nowrap;min-height:36px}
+
+/* ══ ITEM ROWS (mobile-optimised) ══ */
+.item-list{padding:0}
+.item-row{
+  display:flex;align-items:flex-start;gap:12px;padding:14px 16px;
+  border-bottom:1px solid var(--border2);cursor:pointer;
+  transition:background .1s;touch-action:manipulation;
+  min-height:60px;
+}
+.item-row:last-child{border-bottom:none}
+.item-row:active{background:var(--bg)}
+.item-check-wrap{padding-top:2px;flex-shrink:0}
+.item-check{width:22px;height:22px;accent-color:var(--success);cursor:pointer;flex-shrink:0}
+.item-main{flex:1;min-width:0}
+.item-title{font-size:.9rem;font-weight:600;line-height:1.35;word-break:break-word}
+.item-title.done{text-decoration:line-through;color:var(--muted)}
+.item-meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:5px;align-items:center}
+.item-right{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0}
+.chevron{color:var(--muted2);margin-top:3px}
+
+/* ══ EXPENSE ROWS ══ */
+.exp-row{
+  padding:14px 16px;border-bottom:1px solid var(--border2);
+  cursor:pointer;transition:background .1s;touch-action:manipulation;min-height:72px;
+}
+.exp-row:last-child{border-bottom:none}
+.exp-row:active{background:var(--bg)}
+.exp-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:6px}
+.exp-desc{font-size:.9rem;font-weight:600;line-height:1.35;flex:1}
+.exp-amount{font-family:var(--font-head);font-size:.95rem;font-weight:700;text-align:right;flex-shrink:0}
+.exp-bottom{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.exp-bottom-left{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
+.exp-budget-bar{display:flex;align-items:center;gap:6px;flex-shrink:0}
+.mini-track{width:50px;height:5px;background:var(--border);border-radius:3px;overflow:hidden}
+.mini-fill{height:100%;border-radius:3px;transition:width .4s}
+.mini-ok{background:var(--post-mid)}
+.mini-warn{background:var(--pre-mid)}
+.mini-over{background:var(--danger)}
+.exp-vendor{font-size:.72rem;color:var(--muted);display:flex;align-items:center;gap:3px}
+
+/* ══ RECEIPT THUMB ══ */
+.receipt-thumb{
+  width:36px;height:36px;border-radius:6px;object-fit:cover;
+  border:1px solid var(--border);flex-shrink:0;cursor:pointer;
+}
+.receipt-placeholder{
+  width:36px;height:36px;border-radius:6px;background:var(--bg);
+  border:1px dashed var(--border);display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;color:var(--muted2);cursor:pointer;
+}
+
+/* ══ BADGES ══ */
+.badge{display:inline-flex;align-items:center;gap:3px;padding:3px 8px;border-radius:20px;font-size:.68rem;font-weight:600;white-space:nowrap}
+.badge-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0}
+.b-pending{background:#FEF3C7;color:#92400E}.b-pending .badge-dot{background:#D97706}
+.b-progress{background:var(--con-light);color:var(--con-dark)}.b-progress .badge-dot{background:var(--con)}
+.b-done{background:var(--post-light);color:var(--post-dark)}.b-done .badge-dot{background:var(--post)}
+.b-paid{background:var(--post-light);color:var(--post-dark)}.b-paid .badge-dot{background:var(--post)}
+.b-over{background:var(--danger-light);color:#991B1B}.b-over .badge-dot{background:var(--danger)}
+.b-critical{background:#FEE2E2;color:#991B1B}
+.b-high{background:#FEF3C7;color:#92400E}
+.b-medium{background:#EDE9FE;color:#5B21B6}
+.b-low{background:#F0F9FF;color:#0369A1}
+.b-cat{background:var(--bg);border:1px solid var(--border);color:var(--muted)}
+
+/* ══ TAG CHIPS ══ */
+.tag{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:.67rem;font-weight:600;background:#EDE9FE;color:#5B21B6}
+
+/* ══ CHARTS ══ */
+.chart-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;margin-bottom:14px}
+.chart-title{font-family:var(--font-head);font-size:.82rem;font-weight:700;margin-bottom:12px;color:var(--text)}
+.chart-wrap{position:relative;height:200px}
+
+/* ══ PHASE SUMMARY TABLE ══ */
+.summary-row{
+  display:flex;align-items:center;gap:10px;padding:12px 16px;
+  border-bottom:1px solid var(--border2);
+}
+.summary-row:last-child{border-bottom:none}
+.summary-phase{min-width:130px;font-size:.8rem;font-weight:600}
+.summary-prog{flex:1}
+.summary-amounts{text-align:right;font-family:var(--font-head);font-size:.78rem;font-weight:600}
+
+/* ══ EMPTY STATE ══ */
+.empty{padding:40px 20px;text-align:center;color:var(--muted)}
+.empty svg{width:40px;height:40px;margin:0 auto 10px;display:block;opacity:.25}
+.empty p{font-size:.85rem;line-height:1.5}
+.empty-btn{margin-top:12px;padding:10px 20px;background:var(--text);color:#fff;border:none;border-radius:10px;font-family:var(--font-body);font-size:.84rem;font-weight:600;cursor:pointer;min-height:44px;touch-action:manipulation}
+
+/* ══ FAB ══ */
+.fab{
+  position:fixed;right:20px;bottom:calc(var(--tab-h) + var(--safe-bottom) + 16px);
+  width:52px;height:52px;border-radius:50%;background:var(--text);color:#fff;
+  border:none;box-shadow:var(--shadow-md);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  z-index:var(--z-tab);touch-action:manipulation;transition:all .15s;
+}
+.fab:active{transform:scale(.9)}
+.fab svg{width:22px;height:22px}
+
+/* ══ BOTTOM SHEET (modal) ══ */
+.sheet-overlay{
+  position:fixed;inset:0;background:rgba(15,23,42,.4);z-index:var(--z-modal);
+  backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
+  display:flex;align-items:flex-end;
+  animation:fadeIn .15s ease;
+}
+.sheet-overlay.hidden{display:none}
+.sheet{
+  background:var(--surface);width:100%;max-height:92dvh;
+  border-radius:20px 20px 0 0;
+  padding-bottom:calc(16px + var(--safe-bottom));
+  overflow-y:auto;-webkit-overflow-scrolling:touch;
+  animation:sheetUp .22s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes sheetUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.sheet-handle{width:36px;height:4px;background:var(--border);border-radius:2px;margin:10px auto 0}
+.sheet-header{padding:14px 20px 12px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border)}
+.sheet-title{font-family:var(--font-head);font-size:1rem;font-weight:700;letter-spacing:-.03em}
+.sheet-close{width:32px;height:32px;border-radius:8px;border:1px solid var(--border);background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;min-height:32px;touch-action:manipulation}
+.sheet-body{padding:16px 20px}
+.sheet-footer{padding:12px 20px 0;display:flex;flex-direction:column;gap:8px}
+
+/* ══ FORMS ══ */
+.form-group{margin-bottom:14px}
+.form-label{display:flex;align-items:center;gap:4px;font-size:.78rem;font-weight:600;color:var(--text);margin-bottom:6px}
+.req{color:var(--danger)}
+.form-input,.form-select,.form-textarea{
+  width:100%;padding:12px 14px;border:1.5px solid var(--border);
+  border-radius:10px;font-family:var(--font-body);font-size:16px;
+  color:var(--text);background:var(--surface);transition:border .15s;
+  min-height:48px;-webkit-appearance:none;appearance:none;
+}
+.form-input:focus,.form-select:focus,.form-textarea:focus{
+  outline:none;border-color:#6366F1;box-shadow:0 0 0 3px rgba(99,102,241,.12);
+}
+.form-textarea{min-height:90px;resize:vertical;font-size:15px}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.form-hint{font-size:.72rem;color:var(--muted);margin-top:4px}
+.form-error{font-size:.72rem;color:var(--danger);margin-top:4px;display:none}
+.form-error.show{display:block}
+
+/* Tags input */
+.tags-wrap{display:flex;flex-wrap:wrap;gap:6px;padding:8px 10px;border:1.5px solid var(--border);border-radius:10px;min-height:48px;cursor:text;align-items:center}
+.tags-wrap:focus-within{border-color:#6366F1;box-shadow:0 0 0 3px rgba(99,102,241,.12)}
+.tags-wrap input{border:none;outline:none;font-family:var(--font-body);font-size:15px;flex:1;min-width:80px;background:transparent;padding:2px 4px}
+.tag-chip{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;background:#EDE9FE;color:#5B21B6;border-radius:20px;font-size:.72rem;font-weight:600}
+.tag-chip button{background:none;border:none;cursor:pointer;font-size:.8rem;color:#7C3AED;line-height:1;padding:0 2px;min-height:20px}
+
+/* Receipt upload */
+.receipt-upload{display:flex;align-items:center;gap:12px}
+.receipt-preview{width:64px;height:64px;border-radius:10px;object-fit:cover;border:1px solid var(--border)}
+.receipt-btn{flex:1;padding:12px;border:2px dashed var(--border);border-radius:10px;background:var(--bg);text-align:center;cursor:pointer;touch-action:manipulation;transition:border .12s}
+.receipt-btn:active{border-color:#6366F1}
+.receipt-btn p{font-size:.8rem;color:var(--muted);font-weight:500;margin-top:2px}
+.receipt-input{display:none}
+
+/* ══ ACTION BUTTONS ══ */
+.btn-primary{
+  width:100%;padding:14px;background:var(--text);color:#fff;border:none;
+  border-radius:12px;font-family:var(--font-body);font-size:.95rem;font-weight:700;
+  cursor:pointer;transition:all .12s;min-height:52px;touch-action:manipulation;
+}
+.btn-primary:active{transform:scale(.97);opacity:.9}
+.btn-secondary{
+  width:100%;padding:13px;background:transparent;color:var(--muted);
+  border:1.5px solid var(--border);border-radius:12px;font-family:var(--font-body);
+  font-size:.9rem;font-weight:600;cursor:pointer;min-height:48px;touch-action:manipulation;
+}
+.btn-secondary:active{background:var(--bg)}
+.btn-danger-outline{
+  width:100%;padding:13px;background:var(--danger-light);color:var(--danger);
+  border:1.5px solid #FECACA;border-radius:12px;font-family:var(--font-body);
+  font-size:.9rem;font-weight:600;cursor:pointer;min-height:48px;touch-action:manipulation;
+}
+
+/* ══ CONFIRM SHEET ══ */
+.confirm-inner{padding:24px 20px;text-align:center}
+.confirm-inner h3{font-family:var(--font-head);font-size:1rem;font-weight:700;margin-bottom:8px}
+.confirm-inner p{font-size:.85rem;color:var(--muted);margin-bottom:20px;line-height:1.5}
+
+/* ══ IMAGE VIEWER ══ */
+.img-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:var(--z-modal)+10;
+  display:flex;align-items:center;justify-content:center;
+  animation:fadeIn .15s ease;
+}
+.img-overlay.hidden{display:none}
+.img-overlay img{max-width:90vw;max-height:85dvh;border-radius:10px;object-fit:contain}
+.img-close{position:absolute;top:calc(16px + var(--safe-top));right:16px;width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.15);border:none;color:#fff;font-size:1.4rem;cursor:pointer;display:flex;align-items:center;justify-content:center}
+
+/* ══ TOAST ══ */
+#toast-wrap{
+  position:fixed;top:calc(16px + var(--safe-top));left:50%;transform:translateX(-50%);
+  z-index:var(--z-toast);pointer-events:none;display:flex;flex-direction:column;gap:8px;
+  width:calc(100vw - 32px);max-width:380px;
+}
+.toast{
+  background:var(--text);color:#fff;padding:13px 16px;border-radius:12px;
+  font-size:.84rem;font-weight:500;box-shadow:var(--shadow-lg);
+  display:flex;align-items:center;gap:8px;
+  animation:toastDrop .25s cubic-bezier(.34,1.56,.64,1);
+}
+.toast.success{background:#065F46}
+.toast.error{background:#991B1B}
+@keyframes toastDrop{from{opacity:0;transform:translateY(-16px)}to{opacity:1;transform:none}}
+@keyframes toastFade{from{opacity:1}to{opacity:0;transform:translateY(-8px)}}
+
+/* ══ EXPORT SHEET ══ */
+.export-options{display:flex;flex-direction:column;gap:10px;padding:16px 20px}
+.export-opt{
+  display:flex;align-items:center;gap:14px;padding:14px 16px;
+  background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);
+  cursor:pointer;touch-action:manipulation;transition:background .12s;
+}
+.export-opt:active{background:var(--border)}
+.export-opt-icon{width:40px;height:40px;border-radius:10px;background:var(--surface);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.export-opt-text strong{font-size:.88rem;font-weight:600;display:block}
+.export-opt-text span{font-size:.75rem;color:var(--muted)}
+
+@media(prefers-reduced-motion:reduce){*{animation-duration:.01ms !important;transition-duration:.01ms !important}}
+@media(min-width:600px){
+  body{max-width:420px;margin:0 auto}
+  .tab-bar{max-width:420px;left:50%;transform:translateX(-50%);border-radius:0}
+}
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="top-bar">
+  <div>
+    <div class="top-bar-title">Project <span>Pranava</span></div>
+    <div class="top-bar-sub">House Construction Tracker</div>
+  </div>
+  <div class="top-bar-actions">
+    <button class="top-btn" onclick="openExportSheet()" aria-label="Export data" title="Export">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+    </button>
+  </div>
+</div>
+
+<!-- VIEWS -->
+<div id="view-dash" class="view">
+  <div class="section-header"><h1>Dashboard</h1><p>Overall project status</p></div>
+  <div class="kpi-grid" id="dash-kpis"></div>
+  <div class="chart-card"><div class="chart-title">Budget vs. Actual by Phase</div><div class="chart-wrap"><canvas id="chart-bar"></canvas></div></div>
+  <div class="chart-card"><div class="chart-title">Spend by Category</div><div class="chart-wrap"><canvas id="chart-pie"></canvas></div></div>
+  <div class="card"><div class="card-header"><div class="card-title">Phase Overview</div></div><div id="dash-summary"></div></div>
+</div>
+
+<div id="view-pre" class="view">
+  <div id="hero-pre"></div>
+  <div id="budget-banner-pre"></div>
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+        Tasks &amp; Milestones <span class="pill" id="tc-pre">0</span>
+      </div>
+      <button class="btn-set" onclick="openTaskSheet('pre')" style="background:var(--pre-light);color:var(--pre-dark)">+ Add</button>
+    </div>
+    <div class="item-list" id="task-list-pre"></div>
+  </div>
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+        Expenses <span class="pill" id="ec-pre">0</span>
+      </div>
+      <button class="btn-set" onclick="openExpSheet('pre')" style="background:var(--pre-light);color:var(--pre-dark)">+ Add</button>
+    </div>
+    <div id="exp-list-pre"></div>
+  </div>
+</div>
+
+<div id="view-con" class="view">
+  <div id="hero-con"></div>
+  <div id="budget-banner-con"></div>
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+        Tasks &amp; Milestones <span class="pill" id="tc-con">0</span>
+      </div>
+      <button class="btn-set" onclick="openTaskSheet('con')" style="background:var(--con-light);color:var(--con-dark)">+ Add</button>
+    </div>
+    <div class="item-list" id="task-list-con"></div>
+  </div>
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+        Expenses <span class="pill" id="ec-con">0</span>
+      </div>
+      <button class="btn-set" onclick="openExpSheet('con')" style="background:var(--con-light);color:var(--con-dark)">+ Add</button>
+    </div>
+    <div id="exp-list-con"></div>
+  </div>
+</div>
+
+<div id="view-post" class="view">
+  <div id="hero-post"></div>
+  <div id="budget-banner-post"></div>
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+        Tasks &amp; Milestones <span class="pill" id="tc-post">0</span>
+      </div>
+      <button class="btn-set" onclick="openTaskSheet('post')" style="background:var(--post-light);color:var(--post-dark)">+ Add</button>
+    </div>
+    <div class="item-list" id="task-list-post"></div>
+  </div>
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+        Expenses <span class="pill" id="ec-post">0</span>
+      </div>
+      <button class="btn-set" onclick="openExpSheet('post')" style="background:var(--post-light);color:var(--post-dark)">+ Add</button>
+    </div>
+    <div id="exp-list-post"></div>
+  </div>
+</div>
+
+<!-- BOTTOM TAB BAR -->
+<nav class="tab-bar" role="tablist" aria-label="Main navigation">
+  <div class="tab-item phase-dash active" data-view="dash" role="tab" tabindex="0" aria-label="Dashboard" aria-selected="true">
+    <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+    <span class="tab-label">Overview</span>
+  </div>
+  <div class="tab-item phase-pre" data-view="pre" role="tab" tabindex="0" aria-label="Pre-Construction" aria-selected="false">
+    <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12h6M9 16h6M17 2H7a2 2 0 00-2 2v16a2 2 0 002 2h10a2 2 0 002-2V4a2 2 0 00-2-2z"/></svg>
+    <span class="tab-label">Pre</span>
+  </div>
+  <div class="tab-item phase-con" data-view="con" role="tab" tabindex="0" aria-label="Construction" aria-selected="false">
+    <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    <span class="tab-label">Build</span>
+  </div>
+  <div class="tab-item phase-post" data-view="post" role="tab" tabindex="0" aria-label="Post-Construction" aria-selected="false">
+    <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+    <span class="tab-label">Post</span>
+  </div>
+</nav>
+
+<!-- TASK SHEET -->
+<div id="task-sheet-overlay" class="sheet-overlay hidden" role="dialog" aria-modal="true">
+  <div class="sheet" id="task-sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-header">
+      <h3 class="sheet-title" id="task-sheet-title">Add Task</h3>
+      <button class="sheet-close" onclick="closeTaskSheet()" aria-label="Close"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="sheet-body" id="task-sheet-body"></div>
+    <div class="sheet-footer" id="task-sheet-footer"></div>
+  </div>
+</div>
+
+<!-- EXPENSE SHEET -->
+<div id="exp-sheet-overlay" class="sheet-overlay hidden" role="dialog" aria-modal="true">
+  <div class="sheet" id="exp-sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-header">
+      <h3 class="sheet-title" id="exp-sheet-title">Add Expense</h3>
+      <button class="sheet-close" onclick="closeExpSheet()" aria-label="Close"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="sheet-body" id="exp-sheet-body"></div>
+    <div class="sheet-footer" id="exp-sheet-footer"></div>
+  </div>
+</div>
+
+<!-- BUDGET CAP SHEET -->
+<div id="budget-sheet-overlay" class="sheet-overlay hidden" role="dialog" aria-modal="true">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-header">
+      <h3 class="sheet-title" id="budget-sheet-title">Set Phase Budget</h3>
+      <button class="sheet-close" onclick="closeBudgetSheet()" aria-label="Close"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="sheet-body">
+      <div class="form-group">
+        <label class="form-label" for="budget-input">Total Phase Budget (₹) <span class="req">*</span></label>
+        <input id="budget-input" class="form-input" type="number" inputmode="numeric" min="0" placeholder="e.g. 5000000"/>
+        <div class="form-hint">This is the overall budget cap for this phase, separate from individual line items.</div>
+      </div>
+    </div>
+    <div class="sheet-footer">
+      <button class="btn-primary" id="budget-save-btn">Save Budget Cap</button>
+      <button class="btn-secondary" onclick="closeBudgetSheet()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIRM SHEET -->
+<div id="confirm-overlay" class="sheet-overlay hidden" role="alertdialog" aria-modal="true">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="confirm-inner">
+      <h3>Delete Item?</h3>
+      <p>This cannot be undone.</p>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button class="btn-danger-outline" id="confirm-yes-btn">Yes, Delete</button>
+        <button class="btn-secondary" onclick="closeConfirm()">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- IMAGE VIEWER -->
+<div id="img-overlay" class="img-overlay hidden" onclick="this.classList.add('hidden')">
+  <button class="img-close" onclick="document.getElementById('img-overlay').classList.add('hidden')" aria-label="Close image">✕</button>
+  <img id="img-viewer-src" src="" alt="Receipt"/>
+</div>
+
+<!-- EXPORT SHEET -->
+<div id="export-overlay" class="sheet-overlay hidden" role="dialog" aria-modal="true">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-header">
+      <h3 class="sheet-title">Export Project Pranava</h3>
+      <button class="sheet-close" onclick="closeExportSheet()" aria-label="Close"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="export-options">
+      <div class="export-opt" onclick="exportCSV()">
+        <div class="export-opt-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+        <div class="export-opt-text"><strong>Export CSV</strong><span>Expenses + Tasks spreadsheet</span></div>
+      </div>
+      <div class="export-opt" onclick="exportJSON()">
+        <div class="export-opt-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></div>
+        <div class="export-opt-text"><strong>Backup JSON</strong><span>Full data backup to restore later</span></div>
+      </div>
+    </div>
+    <div style="padding:0 20px 8px"><button class="btn-secondary" onclick="closeExportSheet()">Cancel</button></div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast-wrap" aria-live="polite" aria-atomic="true"></div>
+
+<script>
+// ════════════════════════════════════════════════
+// CONSTANTS
+// ════════════════════════════════════════════════
+const SK = 'pranava_v2';
+const PM = {
+  pre:  {label:'Pre-Construction', color:'#D97706', mid:'#F59E0B', light:'#FEF3C7', dark:'#92400E', cls:'pre',  desc:'Planning, permits, design & approvals'},
+  con:  {label:'Construction',      color:'#2563EB', mid:'#3B82F6', light:'#DBEAFE', dark:'#1E40AF', cls:'con',  desc:'Foundation, structure, MEP & finishing'},
+  post: {label:'Post-Construction', color:'#059669', mid:'#10B981', light:'#D1FAE5', dark:'#065F46', cls:'post', desc:'Landscaping, interior & final handover'},
+};
+const CATS = {
+  pre:  ['Land Acquisition','Design & Architecture','Permits & Approvals','Soil Testing','Legal Fees','Survey','Utility Connection','Other'],
+  con:  ['Foundation','Structure & RCC','Brickwork & Masonry','Roofing','Plumbing','Electrical','HVAC','Windows & Doors','Plastering & Painting','Flooring','Labour','Equipment Hire','Materials','Other'],
+  post: ['Interior Design','Furniture','Fixtures & Fittings','Landscaping','Driveway','Security System','Cleaning','Inspection & Certification','Snag Repairs','Other'],
+};
+const PRIORITIES = ['Critical','High','Medium','Low'];
+const PALETTE = ['#6366F1','#F59E0B','#EF4444','#10B981','#3B82F6','#8B5CF6','#EC4899','#14B8A6','#F97316','#84CC16','#0EA5E9','#A855F7'];
+
+// ════════════════════════════════════════════════
+// DATA
+// ════════════════════════════════════════════════
+function uid(){return'p_'+Math.random().toString(36).slice(2,9)+Date.now().toString(36)}
+function defData(){
+  return{phases:{
+    pre:{budget:500000,startDate:'2026-01-01',endDate:'2026-03-31',tasks:[
+      {id:uid(),title:'Hire Architect & Structural Engineer',dueDate:'',status:'done',priority:'High',tags:['design'],notes:'Shortlisted 3 firms'},
+      {id:uid(),title:'Finalise house design & floor plan',dueDate:'',status:'done',priority:'High',tags:['design'],notes:''},
+      {id:uid(),title:'Obtain building permits',dueDate:'2026-03-01',status:'in-progress',priority:'Critical',tags:['legal','permits'],notes:'Submitted to municipal corporation'},
+      {id:uid(),title:'Soil testing & site survey',dueDate:'',status:'done',priority:'Medium',tags:['survey'],notes:''},
+      {id:uid(),title:'Finalize contractor & sign agreement',dueDate:'2026-03-15',status:'pending',priority:'Critical',tags:[],notes:''},
+    ],expenses:[
+      {id:uid(),category:'Land Acquisition',description:'Plot registration & stamp duty',vendor:'Sub-Registrar Office',budgeted:150000,actual:152000,date:'2026-01-10',status:'paid',tags:['legal'],receipt:''},
+      {id:uid(),category:'Design & Architecture',description:'Architect fees — concept + working drawings',vendor:'Mohan Associates',budgeted:80000,actual:75000,date:'2026-02-01',status:'paid',tags:['design'],receipt:''},
+      {id:uid(),category:'Permits & Approvals',description:'Municipal building permit',vendor:'BBMP',budgeted:25000,actual:0,date:'',status:'pending',tags:[],receipt:''},
+      {id:uid(),category:'Soil Testing',description:'Geotechnical report',vendor:'GeoTech Labs',budgeted:8000,actual:8500,date:'2026-01-20',status:'paid',tags:[],receipt:''},
+    ]},
+    con:{budget:2500000,startDate:'2026-04-01',endDate:'2026-12-31',tasks:[
+      {id:uid(),title:'Site clearing & excavation',dueDate:'',status:'done',priority:'High',tags:['civil'],notes:''},
+      {id:uid(),title:'Foundation & plinth beam',dueDate:'',status:'done',priority:'Critical',tags:['civil','rcc'],notes:''},
+      {id:uid(),title:'Ground floor slab & columns',dueDate:'2026-06-30',status:'in-progress',priority:'Critical',tags:['rcc'],notes:''},
+      {id:uid(),title:'First floor structure',dueDate:'2026-08-31',status:'pending',priority:'High',tags:['rcc'],notes:''},
+      {id:uid(),title:'Roof slab & waterproofing',dueDate:'2026-09-30',status:'pending',priority:'High',tags:['rcc','waterproofing'],notes:''},
+      {id:uid(),title:'Brickwork & plastering',dueDate:'',status:'pending',priority:'Medium',tags:['masonry'],notes:''},
+      {id:uid(),title:'Electrical rough-in',dueDate:'',status:'pending',priority:'High',tags:['electrical'],notes:''},
+      {id:uid(),title:'Plumbing rough-in',dueDate:'',status:'pending',priority:'High',tags:['plumbing'],notes:''},
+    ],expenses:[
+      {id:uid(),category:'Foundation',description:'PCC + RCC foundation work',vendor:'Sri Ram Constructions',budgeted:300000,actual:310000,date:'2026-03-15',status:'paid',tags:['civil'],receipt:''},
+      {id:uid(),category:'Structure & RCC',description:'Columns, beams & slabs — G+1',vendor:'Sri Ram Constructions',budgeted:700000,actual:680000,date:'2026-04-01',status:'paid',tags:['rcc'],receipt:''},
+      {id:uid(),category:'Brickwork & Masonry',description:'Brick walls all floors',vendor:'TBD',budgeted:200000,actual:0,date:'',status:'pending',tags:[],receipt:''},
+      {id:uid(),category:'Plumbing',description:'Complete plumbing — all floors',vendor:'TBD',budgeted:120000,actual:0,date:'',status:'pending',tags:[],receipt:''},
+      {id:uid(),category:'Electrical',description:'Wiring, MCB, DB boards',vendor:'TBD',budgeted:100000,actual:0,date:'',status:'pending',tags:[],receipt:''},
+      {id:uid(),category:'Materials',description:'Steel, cement, sand, aggregates',vendor:'BuildMart',budgeted:450000,actual:462000,date:'2026-04-10',status:'paid',tags:['materials'],receipt:''},
+    ]},
+    post:{budget:800000,startDate:'2027-01-01',endDate:'2027-06-30',tasks:[
+      {id:uid(),title:'Interior painting & texture',dueDate:'',status:'pending',priority:'Medium',tags:['interior'],notes:''},
+      {id:uid(),title:'Kitchen cabinets & countertop',dueDate:'',status:'pending',priority:'High',tags:['kitchen'],notes:''},
+      {id:uid(),title:'Bathroom fittings & fixtures',dueDate:'',status:'pending',priority:'High',tags:['bathroom'],notes:''},
+      {id:uid(),title:'Landscaping & compound wall',dueDate:'',status:'pending',priority:'Low',tags:['exterior'],notes:''},
+      {id:uid(),title:'Final inspection & occupancy certificate',dueDate:'',status:'pending',priority:'Critical',tags:['legal'],notes:''},
+    ],expenses:[
+      {id:uid(),category:'Interior Design',description:'False ceiling, paint & textures',vendor:'TBD',budgeted:180000,actual:0,date:'',status:'pending',tags:[],receipt:''},
+      {id:uid(),category:'Furniture',description:'Modular kitchen + wardrobes',vendor:'TBD',budgeted:250000,actual:0,date:'',status:'pending',tags:[],receipt:''},
+      {id:uid(),category:'Fixtures & Fittings',description:'Sanitary ware, CP fittings',vendor:'TBD',budgeted:90000,actual:0,date:'',status:'pending',tags:[],receipt:''},
+      {id:uid(),category:'Landscaping',description:'Garden, driveway, compound',vendor:'TBD',budgeted:60000,actual:0,date:'',status:'pending',tags:[],receipt:''},
+    ]},
+  }};
+}
+
+function load(){try{const d=localStorage.getItem(SK);return d?JSON.parse(d):defData()}catch{return defData()}}
+function save(){localStorage.setItem(SK,JSON.stringify(DATA))}
+let DATA=load();
+
+// ════════════════════════════════════════════════
+// HELPERS
+// ════════════════════════════════════════════════
+function fmt(n){return'₹'+Number(n||0).toLocaleString('en-IN')}
+function fmtDate(d){if(!d)return'—';const p=d.split('-');return p[2]+'/'+p[1]+'/'+p[0]}
+function esc(s){if(!s)return'';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function ps(k){
+  const p=DATA.phases[k],tasks=p.tasks||[],exps=p.expenses||[];
+  const taskDone=tasks.filter(t=>t.status==='done').length;
+  const budgeted=exps.reduce((s,e)=>s+(+e.budgeted||0),0);
+  const actual=exps.reduce((s,e)=>s+(+e.actual||0),0);
+  const cap=+p.budget||0;
+  return{taskTotal:tasks.length,taskDone,budgeted,actual,cap,taskPct:tasks.length?Math.round(taskDone/tasks.length*100):0,over:actual>budgeted&&budgeted>0,capOver:cap&&actual>cap};
+}
+function total(){
+  let b=0,a=0,tt=0,td=0,cap=0;
+  ['pre','con','post'].forEach(k=>{const s=ps(k);b+=s.budgeted;a+=s.actual;tt+=s.taskTotal;td+=s.taskDone;cap+=(+DATA.phases[k].budget||0);});
+  return{budgeted:b,actual:a,taskTotal:tt,taskDone:td,cap,pct:tt?Math.round(td/tt*100):0};
+}
+function catTotals(){
+  const m={};
+  ['pre','con','post'].forEach(k=>DATA.phases[k].expenses.forEach(e=>{if(+e.actual>0)m[e.category]=(m[e.category]||0)+(+e.actual)}));
+  return m;
+}
+const priorityBadge={Critical:'b-critical',High:'b-high',Medium:'b-medium',Low:'b-low'};
+const statusBadge={'pending':'b-pending','in-progress':'b-progress','done':'b-done','paid':'b-paid','over-budget':'b-over'};
+const statusLabel={'pending':'Pending','in-progress':'In Progress','done':'Done','paid':'Paid','over-budget':'Over Budget'};
+
+// ════════════════════════════════════════════════
+// ROUTER
+// ════════════════════════════════════════════════
+let CV='dash';
+function showView(v){
+  document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));
+  document.querySelectorAll('.tab-item').forEach(el=>{el.classList.remove('active');el.setAttribute('aria-selected','false')});
+  document.getElementById('view-'+v).classList.add('active');
+  const tab=document.querySelector(`[data-view="${v}"]`);
+  tab.classList.add('active');tab.setAttribute('aria-selected','true');
+  CV=v;
+  if(v==='dash') renderDash(); else renderPhase(v);
+  window.scrollTo({top:0,behavior:'instant'});
+}
+
+// ════════════════════════════════════════════════
+// DASHBOARD
+// ════════════════════════════════════════════════
+let barChart=null,pieChart=null;
+function renderDash(){
+  const t=total();
+  const rem=t.cap?t.cap-t.actual:t.budgeted-t.actual;
+  const pct=t.cap?Math.min(Math.round(t.actual/t.cap*100),100):(t.budgeted?Math.min(Math.round(t.actual/t.budgeted*100),100):0);
+  const kpis=[
+    {label:'Total Budget Cap',value:fmt(t.cap||t.budgeted),sub:'All phases',color:'#6366F1',bar:100},
+    {label:'Total Spent',value:fmt(t.actual),sub:pct+'% used',color:t.actual>(t.cap||t.budgeted)?'#EF4444':'#059669',bar:pct},
+    {label:'Remaining',value:fmt(Math.abs(rem)),sub:rem>=0?'Under budget':'Over budget',color:rem>=0?'#059669':'#EF4444',bar:Math.max(0,100-pct)},
+    {label:'Progress',value:t.taskDone+'/'+t.taskTotal,sub:t.pct+'% tasks done',color:'#F59E0B',bar:t.pct},
+  ];
+  document.getElementById('dash-kpis').innerHTML=kpis.map(k=>`
+    <div class="kpi"><div class="kpi-label">${k.label}</div>
+    <div class="kpi-value" style="color:${k.color}">${k.value}</div>
+    <div class="kpi-sub">${k.sub}</div>
+    <div class="kpi-bar" style="background:${k.color};width:${k.bar}%"></div></div>`).join('');
+  // summary rows
+  document.getElementById('dash-summary').innerHTML=['pre','con','post'].map(k=>{
+    const s=ps(k);const m=PM[k];
+    return`<div class="summary-row">
+      <div class="summary-phase"><span class="badge b-${m.cls}" style="background:${m.light};color:${m.dark}">${m.label}</span></div>
+      <div class="summary-prog">
+        <div style="display:flex;align-items:center;gap:6px">
+          <div class="prog-track"><div class="prog-fill" style="width:${s.taskPct}%;background:${m.mid}"></div></div>
+          <span style="font-size:.72rem;font-weight:700;color:${m.color}">${s.taskPct}%</span>
+        </div>
+        <div style="font-size:.68rem;color:var(--muted);margin-top:3px">${fmt(s.actual)} / ${fmt(s.cap||s.budgeted)}</div>
+      </div>
+      <div class="summary-amounts" style="color:${s.over||s.capOver?'var(--danger)':'var(--success)'}">${s.over||s.capOver?'▲ Over':'✓ OK'}</div>
+    </div>`;
+  }).join('');
+  updateCharts();
+}
+
+function updateCharts(){
+  const labels=['Pre','Construction','Post'];
+  const budgets=['pre','con','post'].map(k=>{const s=ps(k);return s.cap||s.budgeted});
+  const actuals=['pre','con','post'].map(k=>ps(k).actual);
+  if(barChart)barChart.destroy();
+  barChart=new Chart(document.getElementById('chart-bar').getContext('2d'),{
+    type:'bar',
+    data:{labels,datasets:[
+      {label:'Budget',data:budgets,backgroundColor:['rgba(217,119,6,.2)','rgba(37,99,235,.2)','rgba(5,150,105,.2)'],borderColor:['#D97706','#2563EB','#059669'],borderWidth:2,borderRadius:8},
+      {label:'Actual',data:actuals,backgroundColor:['rgba(217,119,6,.8)','rgba(37,99,235,.8)','rgba(5,150,105,.8)'],borderColor:['#D97706','#2563EB','#059669'],borderWidth:2,borderRadius:8},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'bottom',labels:{font:{family:'Fira Sans',size:11},boxWidth:10,padding:12}},tooltip:{callbacks:{label:c=>' '+fmt(c.raw)}}},
+      scales:{y:{ticks:{callback:v=>fmt(v),font:{family:'Fira Code',size:10}},grid:{color:'rgba(0,0,0,.04)'}},x:{ticks:{font:{family:'Fira Sans',size:11}},grid:{display:false}}}}
+  });
+  if(pieChart)pieChart.destroy();
+  const cats=catTotals(),cl=Object.keys(cats),cv=Object.values(cats);
+  if(!cv.length){document.getElementById('chart-pie').parentElement.innerHTML='<div class="empty"><p>No actual spend yet</p></div>';return;}
+  pieChart=new Chart(document.getElementById('chart-pie').getContext('2d'),{
+    type:'doughnut',
+    data:{labels:cl,datasets:[{data:cv,backgroundColor:cl.map((_,i)=>PALETTE[i%PALETTE.length]),borderWidth:2,borderColor:'#fff',hoverOffset:4}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'58%',
+      plugins:{legend:{position:'bottom',labels:{font:{family:'Fira Sans',size:10},boxWidth:10,padding:8}},tooltip:{callbacks:{label:c=>` ${c.label}: ${fmt(c.raw)}`}}}}
+  });
+}
+
+// ════════════════════════════════════════════════
+// PHASE RENDER
+// ════════════════════════════════════════════════
+function renderPhase(k){
+  const m=PM[k],s=ps(k),p=DATA.phases[k];
+  document.getElementById('hero-'+k).innerHTML=`
+    <div class="phase-hero" style="border-top:4px solid ${m.color}">
+      <div class="phase-hero-name" style="color:${m.color}">${m.label}</div>
+      <div class="phase-hero-desc">${m.desc}</div>
+      <div class="phase-dates">
+        <div class="phase-date-item"><div class="phase-date-label">Start</div><div class="phase-date-val">${fmtDate(p.startDate)||'—'}</div></div>
+        <div class="phase-date-item"><div class="phase-date-label">End</div><div class="phase-date-val">${fmtDate(p.endDate)||'—'}</div></div>
+      </div>
+      <div class="phase-stats">
+        <div class="phase-stat"><div class="phase-stat-v" style="color:${m.color}">${s.taskDone}/${s.taskTotal}</div><div class="phase-stat-l">Tasks</div></div>
+        <div class="phase-stat"><div class="phase-stat-v">${fmt(s.cap||s.budgeted)}</div><div class="phase-stat-l">Budget</div></div>
+        <div class="phase-stat"><div class="phase-stat-v" style="color:${s.capOver?'var(--danger)':'inherit'}">${fmt(s.actual)}</div><div class="phase-stat-l">Spent</div></div>
+        <div class="phase-stat"><div class="phase-stat-v" style="color:${s.capOver?'var(--danger)':'var(--success)'}">${fmt(Math.abs((s.cap||s.budgeted)-s.actual))}</div><div class="phase-stat-l">${s.capOver?'Over':'Left'}</div></div>
+      </div>
+      <div class="prog-wrap">
+        <div class="prog-track"><div class="prog-fill" style="width:${s.taskPct}%;background:${m.mid}"></div></div>
+        <span class="prog-pct" style="color:${m.color}">${s.taskPct}%</span>
+      </div>
+    </div>`;
+  // Budget banner
+  document.getElementById('budget-banner-'+k).innerHTML=`
+    <div class="budget-banner">
+      <div>
+        <div class="budget-banner-left">Phase Budget Cap</div>
+        <div class="budget-banner-val" style="color:${s.capOver?'var(--danger)':m.color}">${s.cap?fmt(s.cap):'Not set'}</div>
+      </div>
+      <button class="btn-set" onclick="openBudgetSheet('${k}')" style="background:${m.light};color:${m.dark}">${s.cap?'Edit':'Set Budget'}</button>
+    </div>`;
+  renderTasks(k);renderExps(k);
+}
+
+function renderTasks(k){
+  const tasks=DATA.phases[k].tasks;
+  const m=PM[k];
+  document.getElementById('tc-'+k).textContent=tasks.length;
+  const el=document.getElementById('task-list-'+k);
+  if(!tasks.length){el.innerHTML=`<div class="empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><p>No tasks yet</p><button class="empty-btn" onclick="openTaskSheet('${k}')">+ Add First Task</button></div>`;return;}
+  el.innerHTML=tasks.map(t=>`
+    <div class="item-row" onclick="openTaskSheet('${k}','${t.id}')">
+      <div class="item-check-wrap" onclick="event.stopPropagation()">
+        <input type="checkbox" class="item-check" ${t.status==='done'?'checked':''} onchange="toggleTask('${k}','${t.id}',this.checked)" aria-label="Mark done"/>
+      </div>
+      <div class="item-main">
+        <div class="item-title ${t.status==='done'?'done':''}">${esc(t.title)}</div>
+        <div class="item-meta">
+          <span class="badge ${priorityBadge[t.priority]||'b-medium'}">${t.priority||'Medium'}</span>
+          <span class="badge ${statusBadge[t.status]||'b-pending'}"><span class="badge-dot"></span>${statusLabel[t.status]||t.status}</span>
+          ${t.dueDate?`<span style="font-size:.68rem;color:var(--muted)">📅 ${fmtDate(t.dueDate)}</span>`:''}
+          ${(t.tags||[]).map(tg=>`<span class="tag">${esc(tg)}</span>`).join('')}
+        </div>
+        ${t.notes?`<div style="font-size:.75rem;color:var(--muted);margin-top:4px;line-height:1.4">${esc(t.notes)}</div>`:''}
+      </div>
+      <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+    </div>`).join('');
+}
+
+function renderExps(k){
+  const exps=DATA.phases[k].expenses;
+  document.getElementById('ec-'+k).textContent=exps.length;
+  const el=document.getElementById('exp-list-'+k);
+  const m=PM[k];
+  if(!exps.length){el.innerHTML=`<div class="empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg><p>No expenses yet</p><button class="empty-btn" onclick="openExpSheet('${k}')">+ Add First Expense</button></div>`;return;}
+  el.innerHTML=exps.map(e=>{
+    const pct=+e.budgeted?Math.min(Math.round((+e.actual/+e.budgeted)*100),110):0;
+    const fillCls=+e.actual>+e.budgeted?'mini-over':(pct>80?'mini-warn':'mini-ok');
+    const st=+e.actual>+e.budgeted&&+e.budgeted>0?'over-budget':(+e.actual>0?'paid':'pending');
+    return`<div class="exp-row" onclick="openExpSheet('${k}','${e.id}')">
+      <div class="exp-top">
+        <div>
+          <div class="exp-desc">${esc(e.description)}</div>
+          <span class="badge b-cat" style="font-size:.65rem;margin-top:3px;display:inline-flex">${esc(e.category)}</span>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+          <div class="exp-amount" style="color:${+e.actual>+e.budgeted?'var(--danger)':+e.actual>0?'var(--success)':'var(--muted)'}">${+e.actual>0?fmt(e.actual):'—'}</div>
+          ${e.receipt?`<img src="${e.receipt}" class="receipt-thumb" onclick="event.stopPropagation();viewReceipt('${e.id}','${k}')" alt="Receipt" title="View receipt"/>`:''}
+        </div>
+      </div>
+      <div class="exp-bottom">
+        <div class="exp-bottom-left">
+          <span class="badge ${statusBadge[st]||'b-pending'}"><span class="badge-dot"></span>${statusLabel[st]}</span>
+          ${e.vendor&&e.vendor!=='TBD'?`<span class="exp-vendor"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>${esc(e.vendor)}</span>`:''}
+          ${e.date?`<span style="font-size:.68rem;color:var(--muted)">${fmtDate(e.date)}</span>`:''}
+        </div>
+        <div class="exp-budget-bar">
+          <div class="mini-track"><div class="mini-fill ${fillCls}" style="width:${Math.min(pct,100)}%"></div></div>
+          <span style="font-size:.68rem;color:var(--muted);font-family:'Fira Code',monospace">${fmt(e.budgeted)}</span>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ════════════════════════════════════════════════
+// TASK SHEET
+// ════════════════════════════════════════════════
+let _tk=null,_tid=null,_taskTags=[];
+function openTaskSheet(k,id){
+  _tk=k;_tid=id||null;_taskTags=[];
+  const m=PM[k];
+  const ex=id?DATA.phases[k].tasks.find(t=>t.id===id):null;
+  if(ex)_taskTags=[...(ex.tags||[])];
+  document.getElementById('task-sheet-title').textContent=(ex?'Edit':'Add')+' Task — '+m.label;
+  document.getElementById('task-sheet-body').innerHTML=`
+    <div class="form-group"><label class="form-label" for="t-title">Task Title <span class="req">*</span></label>
+      <input id="t-title" class="form-input" type="text" value="${esc(ex?.title||'')}" placeholder="e.g. Hire Architect" autocomplete="off"/></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label" for="t-priority">Priority</label>
+        <select id="t-priority" class="form-select">${PRIORITIES.map(p=>`<option value="${p}" ${(ex?.priority||'Medium')===p?'selected':''}>${p}</option>`).join('')}</select></div>
+      <div class="form-group"><label class="form-label" for="t-status">Status</label>
+        <select id="t-status" class="form-select">
+          <option value="pending" ${(ex?.status||'pending')==='pending'?'selected':''}>Pending</option>
+          <option value="in-progress" ${ex?.status==='in-progress'?'selected':''}>In Progress</option>
+          <option value="done" ${ex?.status==='done'?'selected':''}>Done</option>
+        </select></div>
+    </div>
+    <div class="form-group"><label class="form-label" for="t-due">Due Date</label>
+      <input id="t-due" class="form-input" type="date" value="${ex?.dueDate||''}"/></div>
+    <div class="form-group"><label class="form-label">Tags</label>
+      <div class="tags-wrap" id="tags-wrap" onclick="document.getElementById('tag-input').focus()">
+        <span id="tag-chips"></span>
+        <input id="tag-input" placeholder="Add tag, press Enter" style="border:none;outline:none;font-family:var(--font-body);font-size:15px;flex:1;min-width:80px;background:transparent;padding:2px 4px"/>
+      </div>
+      <div class="form-hint">Press Enter or comma to add a tag</div></div>
+    <div class="form-group"><label class="form-label" for="t-notes">Notes</label>
+      <textarea id="t-notes" class="form-textarea" placeholder="Optional notes…">${esc(ex?.notes||'')}</textarea></div>`;
+  renderTagChips();
+  document.getElementById('tag-input').addEventListener('keydown',e=>{
+    if(e.key==='Enter'||e.key===','){e.preventDefault();const v=e.target.value.trim().replace(/,$/,'');if(v&&!_taskTags.includes(v)){_taskTags.push(v);renderTagChips();e.target.value=''}}
+    if(e.key==='Backspace'&&!e.target.value&&_taskTags.length){_taskTags.pop();renderTagChips();}
+  });
+  const footer=document.getElementById('task-sheet-footer');
+  footer.innerHTML='';
+  if(ex){const db=document.createElement('button');db.className='btn-danger-outline';db.textContent='Delete Task';db.onclick=()=>{closeTaskSheet();confirmDelete(()=>{DATA.phases[k].tasks=DATA.phases[k].tasks.filter(t=>t.id!==id);save();renderPhase(k);showToast('Task deleted')})};footer.appendChild(db);}
+  const sb=document.createElement('button');sb.className='btn-primary';sb.textContent='Save Task';
+  sb.onclick=()=>{
+    const title=document.getElementById('t-title').value.trim();
+    if(!title){showToast('Task title required','error');document.getElementById('t-title').focus();return;}
+    const obj={title,priority:document.getElementById('t-priority').value,status:document.getElementById('t-status').value,dueDate:document.getElementById('t-due').value,tags:[..._taskTags],notes:document.getElementById('t-notes').value.trim()};
+    if(ex)Object.assign(ex,obj);
+    else DATA.phases[k].tasks.push({id:uid(),...obj});
+    save();closeTaskSheet();renderPhase(k);showToast(ex?'Task updated':'Task added','success');
+  };
+  footer.appendChild(sb);
+  const cb=document.createElement('button');cb.className='btn-secondary';cb.textContent='Cancel';cb.onclick=closeTaskSheet;footer.appendChild(cb);
+  openSheet('task-sheet-overlay');
+  setTimeout(()=>document.getElementById('t-title').focus(),120);
+}
+function renderTagChips(){
+  document.getElementById('tag-chips').innerHTML=_taskTags.map((t,i)=>`<span class="tag-chip">${esc(t)}<button onclick="_taskTags.splice(${i},1);renderTagChips()" aria-label="Remove tag ${t}">×</button></span>`).join('');
+}
+function closeTaskSheet(){closeSheet('task-sheet-overlay')}
+function toggleTask(k,id,checked){
+  const t=DATA.phases[k].tasks.find(t=>t.id===id);
+  if(t){t.status=checked?'done':'pending';save();renderTasks(k);}
+}
+
+// ════════════════════════════════════════════════
+// EXPENSE SHEET
+// ════════════════════════════════════════════════
+let _ek=null,_eid=null,_receipt='';
+function openExpSheet(k,id){
+  _ek=k;_eid=id||null;
+  const m=PM[k];
+  const ex=id?DATA.phases[k].expenses.find(e=>e.id===id):null;
+  _receipt=ex?.receipt||'';
+  document.getElementById('exp-sheet-title').textContent=(ex?'Edit':'Add')+' Expense — '+m.label;
+  const cats=CATS[k];
+  document.getElementById('exp-sheet-body').innerHTML=`
+    <div class="form-group"><label class="form-label" for="e-desc">Description <span class="req">*</span></label>
+      <input id="e-desc" class="form-input" type="text" value="${esc(ex?.description||'')}" placeholder="e.g. Architect fees" autocomplete="off"/></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label" for="e-cat">Category <span class="req">*</span></label>
+        <select id="e-cat" class="form-select">${cats.map(c=>`<option value="${c}" ${ex?.category===c?'selected':''}>${c}</option>`).join('')}<option value="__custom__" ${ex&&!cats.includes(ex.category)?'selected':''}>Custom…</option></select></div>
+      <div class="form-group" id="custom-cat-wrap" style="display:${ex&&!cats.includes(ex.category)?'block':'none'}">
+        <label class="form-label" for="e-custom-cat">Custom Category</label>
+        <input id="e-custom-cat" class="form-input" type="text" value="${ex&&!cats.includes(ex.category)?esc(ex.category):''}" placeholder="Enter category"/></div>
+    </div>
+    <div class="form-group"><label class="form-label" for="e-vendor">Vendor / Contractor</label>
+      <input id="e-vendor" class="form-input" type="text" value="${esc(ex?.vendor||'')}" placeholder="e.g. Sri Ram Constructions" autocomplete="off"/></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label" for="e-budgeted">Budgeted (₹) <span class="req">*</span></label>
+        <input id="e-budgeted" class="form-input" type="number" inputmode="numeric" min="0" value="${ex?.budgeted||''}" placeholder="0"/></div>
+      <div class="form-group"><label class="form-label" for="e-actual">Actual Paid (₹)</label>
+        <input id="e-actual" class="form-input" type="number" inputmode="numeric" min="0" value="${ex?.actual||''}" placeholder="0"/></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label" for="e-date">Payment Date</label>
+        <input id="e-date" class="form-input" type="date" value="${ex?.date||''}"/></div>
+      <div class="form-group"><label class="form-label" for="e-status">Status</label>
+        <select id="e-status" class="form-select">
+          <option value="pending" ${(ex?.status||'pending')==='pending'?'selected':''}>Pending</option>
+          <option value="paid" ${ex?.status==='paid'?'selected':''}>Paid</option>
+          <option value="over-budget" ${ex?.status==='over-budget'?'selected':''}>Over Budget</option>
+        </select></div>
+    </div>
+    <div class="form-group"><label class="form-label">Receipt / Photo</label>
+      <div class="receipt-upload">
+        <div id="receipt-preview-wrap">
+          ${_receipt?`<img src="${_receipt}" class="receipt-preview" id="receipt-img" alt="Receipt"/>`:`<div class="receipt-placeholder" id="receipt-placeholder"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></div>`}
+        </div>
+        <label class="receipt-btn" for="receipt-file-input">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin:0 auto;display:block"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+          <p>${_receipt?'Replace Photo':'Attach Photo / Receipt'}</p>
+          <input type="file" id="receipt-file-input" class="receipt-input" accept="image/*" capture="environment"/>
+        </label>
+      </div>
+      ${_receipt?`<button onclick="_receipt='';document.getElementById('receipt-preview-wrap').innerHTML='<div class=\\"receipt-placeholder\\" id=\\"receipt-placeholder\\"><svg width=\\"20\\" height=\\"20\\" viewBox=\\"0 0 24 24\\" fill=\\"none\\" stroke=\\"currentColor\\" stroke-width=\\"1.5\\"><rect x=\\"3\\" y=\\"3\\" width=\\"18\\" height=\\"18\\" rx=\\"2\\"/><circle cx=\\"8.5\\" cy=\\"8.5\\" r=\\"1.5\\"/><polyline points=\\"21 15 16 10 5 21\\"/></svg></div>'" style="font-size:.75rem;color:var(--danger);background:none;border:none;cursor:pointer;margin-top:6px;padding:0">Remove receipt</button>`:''}
+    </div>`;
+  // Custom category toggle
+  document.getElementById('e-cat').addEventListener('change',function(){
+    document.getElementById('custom-cat-wrap').style.display=this.value==='__custom__'?'block':'none';
+  });
+  // Receipt upload
+  document.getElementById('receipt-file-input').addEventListener('change',function(){
+    const file=this.files[0];if(!file)return;
+    if(file.size>5*1024*1024){showToast('Image too large (max 5MB)','error');return;}
+    const reader=new FileReader();
+    reader.onload=e=>{
+      _receipt=e.target.result;
+      document.getElementById('receipt-preview-wrap').innerHTML=`<img src="${_receipt}" class="receipt-preview" alt="Receipt"/>`;
+    };
+    reader.readAsDataURL(file);
+  });
+  const footer=document.getElementById('exp-sheet-footer');
+  footer.innerHTML='';
+  if(ex){const db=document.createElement('button');db.className='btn-danger-outline';db.textContent='Delete Expense';db.onclick=()=>{closeExpSheet();confirmDelete(()=>{DATA.phases[k].expenses=DATA.phases[k].expenses.filter(e=>e.id!==id);save();renderPhase(k);showToast('Expense deleted')})};footer.appendChild(db);}
+  const sb=document.createElement('button');sb.className='btn-primary';sb.textContent='Save Expense';
+  sb.onclick=()=>{
+    const desc=document.getElementById('e-desc').value.trim();
+    const budgeted=+document.getElementById('e-budgeted').value;
+    if(!desc){showToast('Description required','error');document.getElementById('e-desc').focus();return;}
+    if(!budgeted){showToast('Budgeted amount required','error');document.getElementById('e-budgeted').focus();return;}
+    let cat=document.getElementById('e-cat').value;
+    if(cat==='__custom__'){cat=document.getElementById('e-custom-cat').value.trim()||'Other';}
+    const obj={category:cat,description:desc,vendor:document.getElementById('e-vendor').value.trim(),budgeted,actual:+document.getElementById('e-actual').value||0,date:document.getElementById('e-date').value,status:document.getElementById('e-status').value,tags:[],receipt:_receipt};
+    if(ex)Object.assign(ex,obj);
+    else DATA.phases[k].expenses.push({id:uid(),...obj});
+    save();closeExpSheet();renderPhase(k);showToast(ex?'Expense updated':'Expense added','success');
+  };
+  footer.appendChild(sb);
+  const cb=document.createElement('button');cb.className='btn-secondary';cb.textContent='Cancel';cb.onclick=closeExpSheet;footer.appendChild(cb);
+  openSheet('exp-sheet-overlay');
+  setTimeout(()=>document.getElementById('e-desc').focus(),120);
+}
+function closeExpSheet(){closeSheet('exp-sheet-overlay')}
+function viewReceipt(eid,k){
+  const e=DATA.phases[k].expenses.find(e=>e.id===eid);
+  if(e?.receipt){document.getElementById('img-viewer-src').src=e.receipt;document.getElementById('img-overlay').classList.remove('hidden');}
+}
+
+// ════════════════════════════════════════════════
+// BUDGET SHEET
+// ════════════════════════════════════════════════
+let _bk=null;
+function openBudgetSheet(k){
+  _bk=k;
+  document.getElementById('budget-sheet-title').textContent='Set Budget — '+PM[k].label;
+  document.getElementById('budget-input').value=DATA.phases[k].budget||'';
+  document.getElementById('budget-save-btn').onclick=()=>{
+    const v=+document.getElementById('budget-input').value;
+    if(!v){showToast('Enter a valid amount','error');return;}
+    DATA.phases[k].budget=v;save();closeBudgetSheet();renderPhase(k);showToast('Budget cap saved','success');
+  };
+  openSheet('budget-sheet-overlay');
+  setTimeout(()=>document.getElementById('budget-input').focus(),120);
+}
+function closeBudgetSheet(){closeSheet('budget-sheet-overlay')}
+
+// ════════════════════════════════════════════════
+// EXPORT SHEET
+// ════════════════════════════════════════════════
+function openExportSheet(){openSheet('export-overlay')}
+function closeExportSheet(){closeSheet('export-overlay')}
+function exportCSV(){
+  let csv='Project Pranava — House Construction Tracker\nExported: '+new Date().toLocaleDateString('en-IN')+'\n\n';
+  csv+='EXPENSES\nPhase,Category,Description,Vendor,Budgeted (₹),Actual (₹),Variance (₹),Date,Status\n';
+  ['pre','con','post'].forEach(k=>DATA.phases[k].expenses.forEach(e=>{
+    const v=(+e.budgeted||0)-(+e.actual||0);
+    csv+=`"${PM[k].label}","${e.category}","${e.description}","${e.vendor||''}",${e.budgeted||0},${e.actual||0},${v},"${e.date||''}","${e.status}"\n`;
+  }));
+  csv+='\nTASKS\nPhase,Title,Priority,Status,Due Date,Tags,Notes\n';
+  ['pre','con','post'].forEach(k=>DATA.phases[k].tasks.forEach(t=>{
+    csv+=`"${PM[k].label}","${t.title}","${t.priority||''}","${t.status}","${t.dueDate||''}","${(t.tags||[]).join('; ')}","${t.notes||''}"\n`;
+  }));
+  dl(csv,'text/csv','pranava_export_'+new Date().toISOString().slice(0,10)+'.csv');
+  closeExportSheet();showToast('CSV exported','success');
+}
+function exportJSON(){
+  const bk={...DATA};
+  // strip large receipts from JSON export to keep it reasonable
+  const copy=JSON.parse(JSON.stringify(bk));
+  ['pre','con','post'].forEach(k=>copy.phases[k].expenses.forEach(e=>{if(e.receipt)e.receipt='[image]'}));
+  dl(JSON.stringify(copy,null,2),'application/json','pranava_backup_'+new Date().toISOString().slice(0,10)+'.json');
+  closeExportSheet();showToast('Backup exported','success');
+}
+function dl(content,type,name){const b=new Blob([content],{type});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=name;a.click();URL.revokeObjectURL(a.href);}
+
+// ════════════════════════════════════════════════
+// SHEET / CONFIRM SYSTEM
+// ════════════════════════════════════════════════
+function openSheet(id){
+  const el=document.getElementById(id);
+  el.classList.remove('hidden');
+  el.addEventListener('click',function h(e){if(e.target===el){closeSheet(id);el.removeEventListener('click',h)}});
+  document.addEventListener('keydown',escHandler);
+}
+function closeSheet(id){document.getElementById(id).classList.add('hidden');document.removeEventListener('keydown',escHandler);}
+function escHandler(e){if(e.key==='Escape'){['task-sheet-overlay','exp-sheet-overlay','budget-sheet-overlay','export-overlay','confirm-overlay'].forEach(id=>{document.getElementById(id).classList.add('hidden')});}}
+function confirmDelete(cb){
+  const overlay=document.getElementById('confirm-overlay');
+  overlay.classList.remove('hidden');
+  document.getElementById('confirm-yes-btn').onclick=()=>{cb();closeConfirm()};
+}
+function closeConfirm(){document.getElementById('confirm-overlay').classList.add('hidden')}
+
+// ════════════════════════════════════════════════
+// TOAST
+// ════════════════════════════════════════════════
+function showToast(msg,type=''){
+  const c=document.getElementById('toast-wrap');
+  const t=document.createElement('div');
+  t.className='toast'+(type?' '+type:'');
+  t.setAttribute('role','status');
+  const icon=type==='error'?'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>':'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>';
+  t.innerHTML=icon+msg;
+  c.appendChild(t);
+  setTimeout(()=>{t.style.animation='toastFade .2s ease forwards';setTimeout(()=>t.remove(),200)},3000);
+}
+
+// ════════════════════════════════════════════════
+// TAB NAV + KEYBOARD
+// ════════════════════════════════════════════════
+document.querySelectorAll('.tab-item').forEach(tab=>{
+  tab.addEventListener('click',()=>showView(tab.dataset.view));
+  tab.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();showView(tab.dataset.view)}});
+});
+
+// ════════════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════════════
+showView('dash');
+</script>
+</body>
+</html>
