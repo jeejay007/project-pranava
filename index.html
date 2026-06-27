@@ -432,7 +432,10 @@ body{
   </div>
   <div class="sync-wrap" id="sync-status" onclick="pullLatest()" title="Tap to sync now" style="cursor:pointer">
     <div class="sync-dot syncing" id="sync-dot"></div>
-    <span class="sync-label" id="sync-label">Syncing…</span>
+    <div style="display:flex;flex-direction:column;gap:1px">
+      <span class="sync-label" id="sync-label">Syncing…</span>
+      <span id="sync-time" style="font-size:.6rem;color:var(--muted2);line-height:1"></span>
+    </div>
   </div>
   <div class="top-bar-actions">
     <button class="top-btn" onclick="openExportSheet()" aria-label="Export data" title="Export">
@@ -636,7 +639,7 @@ body{
   <div class="sheet">
     <div class="sheet-handle"></div>
     <div class="sheet-header">
-      <h3 class="sheet-title">Export Project Pranava</h3>
+      <h3 class="sheet-title">Export & Backup</h3>
       <button class="sheet-close" onclick="closeExportSheet()" aria-label="Close"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
     </div>
     <div class="export-options">
@@ -646,9 +649,19 @@ body{
       </div>
       <div class="export-opt" onclick="exportJSON()">
         <div class="export-opt-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></div>
-        <div class="export-opt-text"><strong>Backup JSON</strong><span>Full data backup to restore later</span></div>
+        <div class="export-opt-text"><strong>Download Backup</strong><span>Full JSON backup to restore later</span></div>
+      </div>
+      <div class="export-opt" onclick="showLocalBackups()">
+        <div class="export-opt-icon" style="color:var(--con)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg></div>
+        <div class="export-opt-text"><strong>Restore from Backup</strong><span>Recover last 3 auto-saved snapshots</span></div>
+      </div>
+      <div class="export-opt" onclick="importJSON()">
+        <div class="export-opt-icon" style="color:var(--post)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg></div>
+        <div class="export-opt-text"><strong>Import JSON Backup</strong><span>Restore from a downloaded backup file</span></div>
       </div>
     </div>
+    <div id="backup-list" style="display:none;padding:0 16px 8px"></div>
+    <input type="file" id="import-file-input" accept=".json" style="display:none" onchange="handleImportFile(event)"/>
     <div style="padding:0 20px 8px"><button class="btn-secondary" onclick="closeExportSheet()">Cancel</button></div>
   </div>
 </div>
@@ -821,6 +834,7 @@ async function loadData() {
         DATA = rows[0].data;
         localStorage.setItem(SK, JSON.stringify(DATA));
         localStorage.setItem(SK + '_ts', sbTime);
+        updateSyncTime(rows[0].updated_at);
       }
     } else {
       // DB empty — push local data up
@@ -841,6 +855,7 @@ async function loadData() {
 // ════════════════════════════════════════════════
 function save() {
   const now = Date.now();
+  autoBackup();  // snapshot before overwriting
   localStorage.setItem(SK, JSON.stringify(DATA));
   localStorage.setItem(SK + '_ts', now);  // timestamp every local save
   syncStatus('syncing');
@@ -871,6 +886,7 @@ async function flushSave() {
     }
     // Keep local timestamp in sync with what we just wrote to Supabase
     localStorage.setItem(SK + '_ts', new Date(now).getTime());
+    updateSyncTime(now);
     syncStatus('synced');
     hideSyncError();
   } catch(e) {
@@ -916,9 +932,11 @@ async function pullLatest() {
         DATA = rows[0].data;
         localStorage.setItem(SK, JSON.stringify(DATA));
         localStorage.setItem(SK + '_ts', sbTime);
+        updateSyncTime(rows[0].updated_at);
         showView(CV);
         showToast('Synced latest data', 'success');
       } else {
+        updateSyncTime(new Date(localTime).toISOString());
         showToast('Already up to date', 'success');
       }
       syncStatus('synced');
@@ -1337,13 +1355,94 @@ function exportCSV(){
   closeExportSheet();showToast('CSV exported','success');
 }
 function exportJSON(){
-  const bk={...DATA};
-  // strip large receipts from JSON export to keep it reasonable
-  const copy=JSON.parse(JSON.stringify(bk));
+  const copy=JSON.parse(JSON.stringify(DATA));
   ['pre','con','post'].forEach(k=>copy.phases[k].expenses.forEach(e=>{if(e.receipt)e.receipt='[image]'}));
   dl(JSON.stringify(copy,null,2),'application/json','pranava_backup_'+new Date().toISOString().slice(0,10)+'.json');
-  closeExportSheet();showToast('Backup exported','success');
+  closeExportSheet();showToast('Backup downloaded','success');
 }
+function importJSON(){
+  document.getElementById('import-file-input').click();
+}
+function handleImportFile(e){
+  const file=e.target.files[0];
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    try{
+      const parsed=JSON.parse(ev.target.result);
+      if(!parsed.phases)throw new Error('Invalid backup file');
+      autoBackup();
+      DATA=parsed;
+      save();
+      ['pre','con','post'].forEach(k=>renderPhase(k));
+      renderDash();
+      closeExportSheet();
+      showToast('Backup restored successfully','success');
+    }catch(err){showToast('Invalid backup file','error');}
+  };
+  reader.readAsText(file);
+  e.target.value='';
+}
+
+// ── Auto-backup: keep last 3 snapshots in localStorage ──────────────────────
+const BK_KEY='pranava_backups';
+const BK_MAX=3;
+function autoBackup(){
+  try{
+    const existing=JSON.parse(localStorage.getItem(BK_KEY)||'[]');
+    existing.unshift({ts:Date.now(),data:JSON.parse(JSON.stringify(DATA))});
+    if(existing.length>BK_MAX)existing.length=BK_MAX;
+    localStorage.setItem(BK_KEY,JSON.stringify(existing));
+  }catch(e){}
+}
+function showLocalBackups(){
+  const el=document.getElementById('backup-list');
+  const backups=JSON.parse(localStorage.getItem(BK_KEY)||'[]');
+  if(!backups.length){el.innerHTML='<p style="color:var(--muted);font-size:.85rem;padding:8px 0">No auto-backups yet — they appear after your first save.</p>';el.style.display='block';return;}
+  el.innerHTML='<p style="font-size:.75rem;color:var(--muted);margin-bottom:8px">Tap a snapshot to restore it:</p>'+backups.map((b,i)=>{
+    const d=new Date(b.ts);
+    const label=d.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})+' '+d.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+    const exp=b.data.phases?['pre','con','post'].reduce((s,k)=>s+(b.data.phases[k]?.expenses?.length||0),0):0;
+    const tsk=b.data.phases?['pre','con','post'].reduce((s,k)=>s+(b.data.phases[k]?.tasks?.length||0),0):0;
+    return`<div onclick="restoreBackup(${i})" style="padding:10px 12px;margin-bottom:6px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer">
+      <div style="font-size:.85rem;font-weight:600">${label}</div>
+      <div style="font-size:.72rem;color:var(--muted);margin-top:2px">${exp} expenses · ${tsk} tasks</div>
+    </div>`;
+  }).join('');
+  el.style.display='block';
+}
+function restoreBackup(i){
+  const backups=JSON.parse(localStorage.getItem(BK_KEY)||'[]');
+  if(!backups[i])return;
+  if(!confirm('Restore this snapshot? Your current data will be saved as a new backup first.'))return;
+  autoBackup();
+  DATA=backups[i].data;
+  save();
+  ['pre','con','post'].forEach(k=>renderPhase(k));
+  renderDash();
+  closeExportSheet();
+  showToast('Snapshot restored','success');
+}
+
+// ── Sync timestamp display ───────────────────────────────────────────────────
+function updateSyncTime(isoStr){
+  const el=document.getElementById('sync-time');
+  if(!el)return;
+  const d=new Date(isoStr);
+  const now=new Date();
+  const diff=Math.floor((now-d)/1000);
+  let label;
+  if(diff<60)label='just now';
+  else if(diff<3600)label=Math.floor(diff/60)+'m ago';
+  else if(diff<86400)label=Math.floor(diff/3600)+'h ago';
+  else label=d.toLocaleDateString('en-IN',{day:'2-digit',month:'short'});
+  el.textContent=label;
+}
+// Refresh "X mins ago" label every minute
+setInterval(()=>{
+  const ts=localStorage.getItem(SK+'_ts');
+  if(ts)updateSyncTime(new Date(parseInt(ts)).toISOString());
+},60000);
 function dl(content,type,name){const b=new Blob([content],{type});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=name;a.click();URL.revokeObjectURL(a.href);}
 
 // ════════════════════════════════════════════════
