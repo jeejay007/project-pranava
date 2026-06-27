@@ -800,41 +800,46 @@ function showLoadingOverlay(show) {
 }
 
 async function loadData() {
-  // Step 1: load localStorage instantly (prevents blank flash)
+  // Step 1: load localStorage instantly (correct data, prevents blank flash)
+  let localData = null;
+  let localTime = 0;
   try {
-    const local = localStorage.getItem(SK);
-    DATA = local ? JSON.parse(local) : defData();
+    const raw = localStorage.getItem(SK);
+    const tsRaw = localStorage.getItem(SK + '_ts');
+    localData = raw ? JSON.parse(raw) : null;
+    localTime = tsRaw ? parseInt(tsRaw) : 0;
+    DATA = localData || defData();
   } catch(e) { DATA = defData(); }
 
   if (!_online) { syncStatus('offline'); return; }
 
-  // Step 2: show loader and fetch from Supabase
+  // Step 2: fetch from Supabase — but ONLY update DATA if Supabase is strictly newer
   showLoadingOverlay(true);
   syncStatus('syncing');
   try {
     const res = await fetch(SB_ENDPOINT + '?id=eq.main&select=data,updated_at', {
       headers: SB_HEADERS,
       signal: AbortSignal.timeout(10000),
-      cache: 'no-store'   // always fetch fresh, never serve cached response
+      cache: 'no-store'
     });
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const rows = await res.json();
 
     if (rows.length && rows[0].data && Object.keys(rows[0].data).length > 0) {
-      // Compare timestamps: use whichever is strictly newer
-      const sbTime    = new Date(rows[0].updated_at).getTime();
-      const localRaw  = localStorage.getItem(SK + '_ts');
-      const localTime = localRaw ? parseInt(localRaw) : 0;
+      const sbTime = new Date(rows[0].updated_at).getTime();
 
       if (localTime > sbTime) {
-        // Local is newer — push it up, keep local DATA
+        // Local is strictly newer — push to Supabase, keep local data
         await flushSave();
-      } else {
-        // Supabase is newer — use it
+      } else if (sbTime > localTime) {
+        // Supabase is strictly newer — use it
         DATA = rows[0].data;
         localStorage.setItem(SK, JSON.stringify(DATA));
         localStorage.setItem(SK + '_ts', sbTime);
         updateSyncTime(rows[0].updated_at);
+      } else {
+        // Equal timestamps — local and Supabase are in sync, keep local (no overwrite)
+        updateSyncTime(new Date(localTime).toISOString());
       }
     } else {
       // DB empty — push local data up
