@@ -583,18 +583,28 @@ body{
   <div class="sheet">
     <div class="sheet-handle"></div>
     <div class="sheet-header">
-      <h3 class="sheet-title" id="budget-sheet-title">Set Phase Budget</h3>
+      <h3 class="sheet-title" id="budget-sheet-title">Phase Settings</h3>
       <button class="sheet-close" onclick="closeBudgetSheet()" aria-label="Close"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
     </div>
     <div class="sheet-body">
       <div class="form-group">
         <label class="form-label" for="budget-input">Total Phase Budget (₹) <span class="req">*</span></label>
         <input id="budget-input" class="form-input" type="number" inputmode="numeric" min="0" placeholder="e.g. 5000000"/>
-        <div class="form-hint">This is the overall budget cap for this phase, separate from individual line items.</div>
+        <div class="form-hint">Overall budget cap for this phase, separate from individual line items.</div>
+      </div>
+      <div style="display:flex;gap:12px">
+        <div class="form-group" style="flex:1">
+          <label class="form-label" for="phase-start-input">Start Date</label>
+          <input id="phase-start-input" class="form-input" type="date"/>
+        </div>
+        <div class="form-group" style="flex:1">
+          <label class="form-label" for="phase-end-input">End Date</label>
+          <input id="phase-end-input" class="form-input" type="date"/>
+        </div>
       </div>
     </div>
     <div class="sheet-footer">
-      <button class="btn-primary" id="budget-save-btn">Save Budget Cap</button>
+      <button class="btn-primary" id="budget-save-btn">Save</button>
       <button class="btn-secondary" onclick="closeBudgetSheet()">Cancel</button>
     </div>
   </div>
@@ -1277,12 +1287,19 @@ function viewReceipt(eid,k){
 let _bk=null;
 function openBudgetSheet(k){
   _bk=k;
-  document.getElementById('budget-sheet-title').textContent='Set Budget — '+PM[k].label;
+  document.getElementById('budget-sheet-title').textContent='Phase Settings — '+PM[k].label;
   document.getElementById('budget-input').value=DATA.phases[k].budget||'';
+  document.getElementById('phase-start-input').value=DATA.phases[k].startDate||'';
+  document.getElementById('phase-end-input').value=DATA.phases[k].endDate||'';
   document.getElementById('budget-save-btn').onclick=()=>{
     const v=+document.getElementById('budget-input').value;
     if(!v){showToast('Enter a valid amount','error');return;}
-    DATA.phases[k].budget=v;save();closeBudgetSheet();renderPhase(k);showToast('Budget cap saved','success');
+    DATA.phases[k].budget=v;
+    const sd=document.getElementById('phase-start-input').value;
+    const ed=document.getElementById('phase-end-input').value;
+    if(sd) DATA.phases[k].startDate=sd;
+    if(ed) DATA.phases[k].endDate=ed;
+    save();closeBudgetSheet();renderPhase(k);showToast('Phase settings saved','success');
   };
   openSheet('budget-sheet-overlay');
   setTimeout(()=>document.getElementById('budget-input').focus(),120);
