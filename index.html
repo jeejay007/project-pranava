@@ -871,25 +871,43 @@ function save() {
 async function flushSave() {
   clearTimeout(_syncTimer);
   if (!_online) { syncStatus('offline'); return; }
-  if (_saving)  { _pendingSave = true; return; }   // queue if already in-flight
+  if (_saving)  { _pendingSave = true; return; }
   _saving = true;
   const now = new Date().toISOString();
+  // Snapshot of expense+task counts at time of save — used to verify landing
+  const sentFingerprint = _fingerprint(DATA);
   try {
     const res = await fetch(SB_ENDPOINT + '?id=eq.main', {
       method: 'PATCH',
       headers: SB_HEADERS,
-      body: JSON.stringify({
-        data: DATA,
-        updated_at: now
-      }),
+      body: JSON.stringify({ data: DATA, updated_at: now }),
       signal: AbortSignal.timeout(12000),
-      keepalive: true   // survives page close on mobile
+      keepalive: true
     });
     if (!res.ok) {
       const txt = await res.text().catch(()=>'');
       throw new Error('HTTP ' + res.status + (txt ? ': ' + txt.slice(0,120) : ''));
     }
-    // Keep local timestamp in sync with what we just wrote to Supabase
+
+    // ── Verify: re-fetch and confirm data actually landed ──────────────────
+    let verified = false;
+    try {
+      const vRes = await fetch(SB_ENDPOINT + '?id=eq.main&select=data,updated_at', {
+        headers: SB_HEADERS, signal: AbortSignal.timeout(8000), cache: 'no-store'
+      });
+      if (vRes.ok) {
+        const vRows = await vRes.json();
+        if (vRows.length && vRows[0].data) {
+          const landedFingerprint = _fingerprint(vRows[0].data);
+          verified = (landedFingerprint === sentFingerprint);
+        }
+      }
+    } catch(ve) { /* verify fetch failed — treat as unverified */ }
+
+    if (!verified) {
+      throw new Error('Save sent but verification failed — data mismatch. Retrying…');
+    }
+
     localStorage.setItem(SK + '_ts', new Date(now).getTime());
     updateSyncTime(now);
     syncStatus('synced');
@@ -898,11 +916,24 @@ async function flushSave() {
     console.error('Supabase save failed:', e.message);
     syncStatus('error');
     showSyncError(e.message);
-    setTimeout(flushSave, 4000);  // auto-retry in 4s
+    setTimeout(flushSave, 4000);
   } finally {
     _saving = false;
     if (_pendingSave) { _pendingSave = false; flushSave(); }
   }
+}
+
+// Fingerprint: total expenses + tasks + total actual spend — enough to detect stale data
+function _fingerprint(d) {
+  try {
+    let exps = 0, tasks = 0, actual = 0;
+    ['pre','con','post'].forEach(k => {
+      exps  += (d.phases[k]?.expenses?.length || 0);
+      tasks += (d.phases[k]?.tasks?.length    || 0);
+      actual += d.phases[k]?.expenses?.reduce((s,e) => s + (+e.actual||0), 0) || 0;
+    });
+    return `${exps}:${tasks}:${actual}`;
+  } catch(e) { return 'err'; }
 }
 
 function showSyncError(msg) {
