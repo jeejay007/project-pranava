@@ -825,7 +825,7 @@ function defData(){
       {id:uid(),category:'Fixtures & Fittings',description:'Sanitary ware, CP fittings',vendor:'TBD',budgeted:90000,actual:0,date:'',status:'pending',tags:[],receipt:''},
       {id:uid(),category:'Landscaping',description:'Garden, driveway, compound',vendor:'TBD',budgeted:60000,actual:0,date:'',status:'pending',tags:[],receipt:''},
     ]},
-  },docs:[]};}
+  },docs:[]};
 }
 
 let DATA = defData(); // will be replaced by loadData()
@@ -1189,8 +1189,7 @@ function showView(v){
   tab.classList.add('active');tab.setAttribute('aria-selected','true');
   CV=v;
   if(v==='docs') renderDocs();
-}  CV=v;
-  if(v==='dash') renderDash(); else renderPhase(v);
+  if(v==='dash') renderDash(); else if(v!=='docs') renderPhase(v);
   window.scrollTo({top:0,behavior:'instant'});
 }
 
