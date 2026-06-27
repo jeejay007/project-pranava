@@ -63,6 +63,20 @@ body{
   cursor:pointer;touch-action:manipulation;transition:all .12s;
 }
 .top-btn:active{transform:scale(.92);background:var(--border)}
+/* ══ SYNC STATUS ══ */
+.sync-dot{
+  width:8px;height:8px;border-radius:50%;flex-shrink:0;
+  transition:background .3s;
+}
+.sync-dot.synced{background:#10B981}
+.sync-dot.syncing{background:#F59E0B;animation:pulse .8s infinite}
+.sync-dot.error{background:#EF4444}
+.sync-dot.offline{background:#94A3B8}
+.sync-label{font-size:.65rem;font-weight:600;color:var(--muted)}
+.sync-wrap{display:flex;align-items:center;gap:5px;padding:4px 8px;
+  border-radius:20px;background:var(--bg);border:1px solid var(--border)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
 .top-btn svg{width:18px;height:18px;color:var(--muted)}
 
 /* ══ BOTTOM TAB BAR ══ */
@@ -416,6 +430,10 @@ body{
     <div class="top-bar-title">Project <span>Pranava</span></div>
     <div class="top-bar-sub">House Construction Tracker</div>
   </div>
+  <div class="sync-wrap" id="sync-status" title="Sync status">
+    <div class="sync-dot syncing" id="sync-dot"></div>
+    <span class="sync-label" id="sync-label">Syncing…</span>
+  </div>
   <div class="top-bar-actions">
     <button class="top-btn" onclick="openExportSheet()" aria-label="Export data" title="Export">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
@@ -696,9 +714,105 @@ function defData(){
   }};
 }
 
-function load(){try{const d=localStorage.getItem(SK);return d?JSON.parse(d):defData()}catch{return defData()}}
-function save(){localStorage.setItem(SK,JSON.stringify(DATA))}
-let DATA=load();
+let DATA = defData(); // will be replaced by loadData()
+
+// ════════════════════════════════════════════════
+// SUPABASE CONFIG
+// ════════════════════════════════════════════════
+const SB_URL  = 'https://morhatsumlikbnqvmfux.supabase.co';
+const SB_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1vcmhhdHN1bWxpa2JucXZtZnV4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI0NjQzNDIsImV4cCI6MjA5ODA0MDM0Mn0.lbEf-DBSRgpNyLFKA6iuMblQFmSTO80vJpC0dUtd6Ro';
+const SB_ENDPOINT = SB_URL + '/rest/v1/pranava_data';
+const SB_HEADERS  = {
+  'apikey': SB_KEY,
+  'Authorization': 'Bearer ' + SB_KEY,
+  'Content-Type': 'application/json',
+  'Prefer': 'resolution=merge-duplicates',
+};
+
+let _syncTimer = null;
+let _online = navigator.onLine;
+window.addEventListener('online',  () => { _online=true;  syncStatus('syncing'); scheduleSave(); });
+window.addEventListener('offline', () => { _online=false; syncStatus('offline'); });
+
+function syncStatus(state, msg) {
+  const dot   = document.getElementById('sync-dot');
+  const label = document.getElementById('sync-label');
+  if (!dot) return;
+  dot.className   = 'sync-dot ' + state;
+  const map = { synced:'Saved', syncing:'Syncing…', error:'Error', offline:'Offline' };
+  label.textContent = msg || map[state] || state;
+}
+
+// ════════════════════════════════════════════════
+// LOAD — cloud first, localStorage fallback
+// ════════════════════════════════════════════════
+async function loadData() {
+  // Always show something fast from localStorage first
+  try {
+    const local = localStorage.getItem(SK);
+    if (local) DATA = JSON.parse(local);
+    else DATA = defData();
+  } catch(e) { DATA = defData(); }
+
+  if (!_online) { syncStatus('offline'); return; }
+
+  syncStatus('syncing');
+  try {
+    const res = await fetch(SB_ENDPOINT + '?id=eq.main&select=data', {
+      headers: SB_HEADERS, signal: AbortSignal.timeout(8000)
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const rows = await res.json();
+    if (rows.length && rows[0].data && Object.keys(rows[0].data).length > 0) {
+      DATA = rows[0].data;
+      localStorage.setItem(SK, JSON.stringify(DATA)); // keep local in sync
+    } else {
+      // Table is empty — push local data up
+      await pushToSupabase();
+    }
+    syncStatus('synced');
+  } catch(e) {
+    console.warn('Supabase load failed, using local data:', e.message);
+    syncStatus('error', 'Local only');
+  }
+}
+
+// ════════════════════════════════════════════════
+// SAVE — debounced: local immediately, cloud 1.5s later
+// ════════════════════════════════════════════════
+function save() {
+  localStorage.setItem(SK, JSON.stringify(DATA)); // instant local save
+  syncStatus('syncing');
+  scheduleSave();
+}
+
+function scheduleSave() {
+  clearTimeout(_syncTimer);
+  _syncTimer = setTimeout(pushToSupabase, 1500);
+}
+
+async function pushToSupabase() {
+  if (!_online) { syncStatus('offline'); return; }
+  try {
+    const res = await fetch(SB_ENDPOINT, {
+      method: 'POST',
+      headers: SB_HEADERS,
+      body: JSON.stringify({ id: 'main', data: DATA, updated_at: new Date().toISOString() }),
+      signal: AbortSignal.timeout(10000)
+    });
+    if (!res.ok) {
+      const err = await res.text();
+      throw new Error('HTTP ' + res.status + ': ' + err);
+    }
+    syncStatus('synced');
+  } catch(e) {
+    console.error('Supabase save failed:', e.message);
+    syncStatus('error', 'Retry…');
+    // Retry once after 5s
+    setTimeout(pushToSupabase, 5000);
+  }
+}
+
 
 // ════════════════════════════════════════════════
 // HELPERS
@@ -1149,9 +1263,13 @@ document.querySelectorAll('.tab-item').forEach(tab=>{
 });
 
 // ════════════════════════════════════════════════
-// INIT
+// INIT — load from Supabase then render
 // ════════════════════════════════════════════════
-showView('dash');
+(async () => {
+  showView('dash'); // render with local data immediately
+  await loadData(); // fetch cloud data
+  showView('dash'); // re-render with cloud data
+})();
 </script>
 </body>
 </html>
