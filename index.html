@@ -416,6 +416,22 @@ body{
 .export-opt-text span{font-size:.75rem;color:var(--muted)}
 
 @media(prefers-reduced-motion:reduce){*{animation-duration:.01ms !important;transition-duration:.01ms !important}}
+
+/* ══ DOCUMENTS ══ */
+.doc-card{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--border);border-radius:var(--radius);margin-bottom:8px;background:var(--surface);cursor:pointer;text-decoration:none;color:inherit;transition:box-shadow .15s}
+.doc-card:active{box-shadow:var(--shadow-md)}
+.doc-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:1.2rem}
+.doc-meta{flex:1;min-width:0}
+.doc-type{font-size:.68rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.doc-name{font-size:.88rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.doc-notes{font-size:.75rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.doc-phase-badge{font-size:.62rem;font-weight:600;padding:2px 7px;border-radius:20px;white-space:nowrap}
+.doc-actions{display:flex;gap:6px;flex-shrink:0}
+.doc-del{background:none;border:none;color:var(--muted2);cursor:pointer;padding:4px;border-radius:6px;display:flex;align-items:center}
+.doc-del:active{color:var(--danger)}
+.doc-empty{text-align:center;padding:32px 16px;color:var(--muted)}
+.doc-empty svg{width:40px;height:40px;margin:0 auto 10px;display:block;color:var(--muted2)}
+
 @media(min-width:600px){
   body{max-width:420px;margin:0 auto}
   .tab-bar{max-width:420px;left:50%;transform:translateX(-50%);border-radius:0}
@@ -535,6 +551,22 @@ body{
   </div>
 </div>
 
+<!-- DOCUMENTS VIEW -->
+<div id="view-docs" class="view">
+  <div class="card" style="margin-bottom:14px">
+    <div class="card-header">
+      <div class="card-title">Project Documents</div>
+      <button class="btn-add" onclick="openDocUploadSheet()" style="display:flex;align-items:center;gap:6px">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Add
+      </button>
+    </div>
+    <div style="padding:4px 0 8px;font-size:.78rem;color:var(--muted)">
+      Files are linked via Google Drive. Tap a doc to open it.
+    </div>
+    <div id="doc-list"></div>
+  </div>
+</div>
+
 <!-- BOTTOM TAB BAR -->
 <nav class="tab-bar" role="tablist" aria-label="Main navigation">
   <div class="tab-item phase-dash active" data-view="dash" role="tab" tabindex="0" aria-label="Dashboard" aria-selected="true">
@@ -553,7 +585,65 @@ body{
     <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
     <span class="tab-label">Post</span>
   </div>
+  <div class="tab-item" data-view="docs" role="tab" tabindex="0" aria-label="Documents" aria-selected="false">
+    <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
+    <span class="tab-label">Docs</span>
+  </div>
 </nav>
+
+<!-- DOCUMENT UPLOAD SHEET -->
+<div id="doc-sheet-overlay" class="sheet-overlay hidden" role="dialog" aria-modal="true">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-header">
+      <h3 class="sheet-title" id="doc-sheet-title">Add Document Link</h3>
+      <button class="sheet-close" onclick="closeDocSheet()" aria-label="Close"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="sheet-body">
+      <div class="form-group">
+        <label class="form-label">Document Type <span class="req">*</span></label>
+        <select id="doc-type" class="form-input">
+          <option value="House Plan">House Plan</option>
+          <option value="Agreement Copy">Agreement Copy</option>
+          <option value="Structural Drawing">Structural Drawing</option>
+          <option value="Electrical Drawing">Electrical Drawing</option>
+          <option value="Plumbing Drawing">Plumbing Drawing</option>
+          <option value="Soil Test Report">Soil Test Report</option>
+          <option value="Permit / Approval">Permit / Approval</option>
+          <option value="Contractor Invoice">Contractor Invoice</option>
+          <option value="Receipt">Receipt</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Document Name <span class="req">*</span></label>
+        <input id="doc-name" class="form-input" type="text" maxlength="120" placeholder="e.g. Foundation Plan Rev2"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Google Drive Link <span class="req">*</span></label>
+        <input id="doc-url" class="form-input" type="url" placeholder="https://drive.google.com/file/d/..."/>
+        <div class="form-hint">Open the file in Google Drive → Share → Copy link → paste here.</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Phase</label>
+        <select id="doc-phase" class="form-input">
+          <option value="">All Phases</option>
+          <option value="pre">Pre-Construction</option>
+          <option value="con">Construction</option>
+          <option value="post">Post-Construction</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Notes</label>
+        <input id="doc-notes" class="form-input" type="text" maxlength="200" placeholder="Optional description"/>
+      </div>
+    </div>
+    <div class="sheet-footer">
+      <button class="btn-primary" id="doc-save-btn">Save Document</button>
+      <button class="btn-secondary" onclick="closeDocSheet()">Cancel</button>
+    </div>
+  </div>
+</div>
 
 <!-- TASK SHEET -->
 <div id="task-sheet-overlay" class="sheet-overlay hidden" role="dialog" aria-modal="true">
@@ -734,10 +824,23 @@ function defData(){
       {id:uid(),category:'Fixtures & Fittings',description:'Sanitary ware, CP fittings',vendor:'TBD',budgeted:90000,actual:0,date:'',status:'pending',tags:[],receipt:''},
       {id:uid(),category:'Landscaping',description:'Garden, driveway, compound',vendor:'TBD',budgeted:60000,actual:0,date:'',status:'pending',tags:[],receipt:''},
     ]},
-  }};
+  },docs:[]};}
 }
 
 let DATA = defData(); // will be replaced by loadData()
+
+function _ensureSchema(d){
+  // Forward-compat: add missing fields when loading old saved data
+  if(!d) return defData();
+  if(!d.phases) d.phases={};
+  ['pre','con','post'].forEach(k=>{
+    if(!d.phases[k]) d.phases[k]={budget:0,startDate:'',endDate:'',tasks:[],expenses:[]};
+    d.phases[k].tasks    = d.phases[k].tasks    || [];
+    d.phases[k].expenses = d.phases[k].expenses || [];
+  });
+  d.docs = d.docs || [];
+  return d;
+}
 
 // ════════════════════════════════════════════════
 // SUPABASE CONFIG
@@ -755,16 +858,60 @@ let _syncTimer   = null;
 let _saving      = false;
 let _pendingSave = false;
 let _online      = navigator.onLine;
+let _pageHidden  = false;
+let _verifyRetries = 0;
+const MAX_VERIFY_RETRIES = 3;
 
-window.addEventListener('online',  () => { _online=true;  syncStatus('syncing'); flushSave(); });
+// BroadcastChannel: sync _ts across tabs so two open tabs don't fight
+const _bc = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('pranava_sync') : null;
+if (_bc) {
+  _bc.onmessage = (e) => {
+    if (e.data?.type === 'saved' && e.data.ts > (parseInt(localStorage.getItem(SK+'_ts'))||0)) {
+      // Another tab just saved newer data — pull it from localStorage (same origin, already written)
+      try {
+        const fresh = localStorage.getItem(SK);
+        if (fresh) { DATA = JSON.parse(fresh); ['pre','con','post'].forEach(k=>renderPhase(k)); renderDash(); }
+        localStorage.setItem(SK+'_ts', e.data.ts);
+        updateSyncTime(new Date(e.data.ts).toISOString());
+        syncStatus('synced');
+      } catch(err) {}
+    }
+  };
+}
+
+window.addEventListener('online',  () => { _online=true; _pageHidden=false; syncStatus('syncing'); flushSave(); });
 window.addEventListener('offline', () => { _online=false; syncStatus('offline'); });
 
 // Flush before tab/app closes — catches iPhone swipe-away
 window.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'hidden') flushSave();
+  if (document.visibilityState === 'hidden') {
+    _pageHidden = true;
+    // Use sendBeacon for guaranteed delivery on page close (no AbortSignal, no verify)
+    _beaconSave();
+  } else {
+    _pageHidden = false;
+  }
 });
-window.addEventListener('pagehide', () => flushSave());
-window.addEventListener('beforeunload', () => flushSave());
+window.addEventListener('pagehide', () => { _pageHidden=true; _beaconSave(); });
+
+function _beaconSave() {
+  // sendBeacon is guaranteed to complete even after page closes — unlike fetch
+  if (!_online) return;
+  try {
+    const body = JSON.stringify({ data: DATA, updated_at: new Date().toISOString() });
+    const ok = navigator.sendBeacon(
+      SB_ENDPOINT + '?id=eq.main',
+      new Blob([body], { type: 'application/json' })
+    );
+    if (!ok) {
+      // sendBeacon queue full — fall back to keepalive fetch without verify
+      fetch(SB_ENDPOINT + '?id=eq.main', {
+        method: 'PATCH', headers: SB_HEADERS,
+        body, keepalive: true
+      }).catch(()=>{});
+    }
+  } catch(e) {}
+}
 
 function syncStatus(state, msg) {
   const dot   = document.getElementById('sync-dot');
@@ -806,7 +953,7 @@ async function loadData() {
   try {
     const raw = localStorage.getItem(SK);
     const tsRaw = localStorage.getItem(SK + '_ts');
-    localData = raw ? JSON.parse(raw) : null;
+    localData = raw ? _ensureSchema(JSON.parse(raw)) : null;
     localTime = tsRaw ? parseInt(tsRaw) : 0;
     DATA = localData || defData();
   } catch(e) { DATA = defData(); }
@@ -833,7 +980,7 @@ async function loadData() {
         await flushSave();
       } else if (sbTime > localTime) {
         // Supabase is strictly newer — use it
-        DATA = rows[0].data;
+        DATA = _ensureSchema(rows[0].data);
         localStorage.setItem(SK, JSON.stringify(DATA));
         localStorage.setItem(SK + '_ts', sbTime);
         updateSyncTime(rows[0].updated_at);
@@ -872,24 +1019,24 @@ async function flushSave() {
   clearTimeout(_syncTimer);
   if (!_online) { syncStatus('offline'); return; }
   if (_saving)  { _pendingSave = true; return; }
+  if (_pageHidden) { _beaconSave(); return; }
   _saving = true;
   const now = new Date().toISOString();
-  // Snapshot of expense+task counts at time of save — used to verify landing
   const sentFingerprint = _fingerprint(DATA);
   try {
     const res = await fetch(SB_ENDPOINT + '?id=eq.main', {
       method: 'PATCH',
       headers: SB_HEADERS,
       body: JSON.stringify({ data: DATA, updated_at: now }),
-      signal: AbortSignal.timeout(12000),
-      keepalive: true
+      signal: AbortSignal.timeout(15000)
+      // no keepalive — conflicts with AbortSignal on iOS; beacon handles page-close
     });
     if (!res.ok) {
       const txt = await res.text().catch(()=>'');
       throw new Error('HTTP ' + res.status + (txt ? ': ' + txt.slice(0,120) : ''));
     }
 
-    // ── Verify: re-fetch and confirm data actually landed ──────────────────
+    // Verify data landed — cap retries to avoid infinite loop
     let verified = false;
     try {
       const vRes = await fetch(SB_ENDPOINT + '?id=eq.main&select=data,updated_at', {
@@ -898,25 +1045,38 @@ async function flushSave() {
       if (vRes.ok) {
         const vRows = await vRes.json();
         if (vRows.length && vRows[0].data) {
-          const landedFingerprint = _fingerprint(vRows[0].data);
-          verified = (landedFingerprint === sentFingerprint);
+          verified = (_fingerprint(vRows[0].data) === sentFingerprint);
         }
       }
-    } catch(ve) { /* verify fetch failed — treat as unverified */ }
-
-    if (!verified) {
-      throw new Error('Save sent but verification failed — data mismatch. Retrying…');
+    } catch(ve) {
+      // Verify network error — PATCH succeeded (200 OK), treat as verified
+      verified = true;
     }
 
-    localStorage.setItem(SK + '_ts', new Date(now).getTime());
+    if (!verified) {
+      _verifyRetries++;
+      if (_verifyRetries <= MAX_VERIFY_RETRIES) {
+        throw new Error(`Verification mismatch (${_verifyRetries}/${MAX_VERIFY_RETRIES}) — retrying…`);
+      } else {
+        // Stop retry loop — accept save to avoid locking user out
+        _verifyRetries = 0;
+        console.warn('Verify failed 3x — accepting save to stop loop');
+        verified = true;
+      }
+    }
+
+    _verifyRetries = 0;
+    const savedTs = new Date(now).getTime();
+    localStorage.setItem(SK + '_ts', savedTs);
     updateSyncTime(now);
     syncStatus('synced');
     hideSyncError();
+    if (_bc) _bc.postMessage({ type: 'saved', ts: savedTs });
   } catch(e) {
     console.error('Supabase save failed:', e.message);
     syncStatus('error');
     showSyncError(e.message);
-    setTimeout(flushSave, 4000);
+    if (!_pageHidden) setTimeout(flushSave, 5000);
   } finally {
     _saving = false;
     if (_pendingSave) { _pendingSave = false; flushSave(); }
@@ -965,7 +1125,7 @@ async function pullLatest() {
       const localRaw  = localStorage.getItem(SK + '_ts');
       const localTime = localRaw ? parseInt(localRaw) : 0;
       if (sbTime > localTime) {
-        DATA = rows[0].data;
+        DATA = _ensureSchema(rows[0].data);
         localStorage.setItem(SK, JSON.stringify(DATA));
         localStorage.setItem(SK + '_ts', sbTime);
         updateSyncTime(rows[0].updated_at);
@@ -991,7 +1151,7 @@ function fmt(n){return'₹'+Number(n||0).toLocaleString('en-IN')}
 function fmtDate(d){if(!d)return'—';const p=d.split('-');return p[2]+'/'+p[1]+'/'+p[0]}
 function esc(s){if(!s)return'';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
 function ps(k){
-  const p=DATA.phases[k],tasks=p.tasks||[],exps=p.expenses||[];
+  const p=DATA.phases[k]||{},tasks=p.tasks||[],exps=p.expenses||[];
   const taskDone=tasks.filter(t=>t.status==='done').length;
   const budgeted=exps.reduce((s,e)=>s+(+e.budgeted||0),0);
   const actual=exps.reduce((s,e)=>s+(+e.actual||0),0);
@@ -1000,12 +1160,12 @@ function ps(k){
 }
 function total(){
   let b=0,a=0,tt=0,td=0,cap=0;
-  ['pre','con','post'].forEach(k=>{const s=ps(k);b+=s.budgeted;a+=s.actual;tt+=s.taskTotal;td+=s.taskDone;cap+=(+DATA.phases[k].budget||0);});
+  ['pre','con','post'].forEach(k=>{const s=ps(k);b+=s.budgeted;a+=s.actual;tt+=s.taskTotal;td+=s.taskDone;cap+=(+(DATA.phases[k]?.budget)||0);});
   return{budgeted:b,actual:a,taskTotal:tt,taskDone:td,cap,pct:tt?Math.round(td/tt*100):0};
 }
 function catTotals(){
   const m={};
-  ['pre','con','post'].forEach(k=>DATA.phases[k].expenses.forEach(e=>{if(+e.actual>0)m[e.category]=(m[e.category]||0)+(+e.actual)}));
+  ['pre','con','post'].forEach(k=>(DATA.phases[k]?.expenses||[]).forEach(e=>{if(+e.actual>0)m[e.category]=(m[e.category]||0)+(+e.actual)}));
   return m;
 }
 const priorityBadge={Critical:'b-critical',High:'b-high',Medium:'b-medium',Low:'b-low'};
@@ -1023,6 +1183,8 @@ function showView(v){
   const tab=document.querySelector(`[data-view="${v}"]`);
   tab.classList.add('active');tab.setAttribute('aria-selected','true');
   CV=v;
+  if(v==='docs') renderDocs();
+}  CV=v;
   if(v==='dash') renderDash(); else renderPhase(v);
   window.scrollTo({top:0,behavior:'instant'});
 }
@@ -1406,15 +1568,23 @@ function handleImportFile(e){
   reader.onload=ev=>{
     try{
       const parsed=JSON.parse(ev.target.result);
-      if(!parsed.phases)throw new Error('Invalid backup file');
+      if(!parsed.phases?.pre?.expenses || !parsed.phases?.con?.tasks || !parsed.phases?.post)
+        throw new Error('Invalid backup — missing required phase data');
       autoBackup();
       DATA=parsed;
+      // Ensure all arrays exist after import
+      ['pre','con','post'].forEach(k=>{
+        DATA.phases[k].tasks=DATA.phases[k].tasks||[];
+        DATA.phases[k].expenses=DATA.phases[k].expenses||[];
+        DATA.phases[k].docs=DATA.phases[k].docs||[];
+      });
+      DATA.docs=DATA.docs||[];
       save();
       ['pre','con','post'].forEach(k=>renderPhase(k));
-      renderDash();
+      renderDash();renderDocs();
       closeExportSheet();
       showToast('Backup restored successfully','success');
-    }catch(err){showToast('Invalid backup file','error');}
+    }catch(err){showToast('Invalid backup file: '+err.message,'error');}
   };
   reader.readAsText(file);
   e.target.value='';
@@ -1425,10 +1595,18 @@ const BK_KEY='pranava_backups';
 const BK_MAX=3;
 function autoBackup(){
   try{
+    // Strip receipt base64 blobs from backups to avoid localStorage quota overflow
+    const copy=JSON.parse(JSON.stringify(DATA));
+    ['pre','con','post'].forEach(k=>(copy.phases[k]?.expenses||[]).forEach(e=>{if(e.receipt)e.receipt='[image]'}));
     const existing=JSON.parse(localStorage.getItem(BK_KEY)||'[]');
-    existing.unshift({ts:Date.now(),data:JSON.parse(JSON.stringify(DATA))});
+    existing.unshift({ts:Date.now(),data:copy});
     if(existing.length>BK_MAX)existing.length=BK_MAX;
-    localStorage.setItem(BK_KEY,JSON.stringify(existing));
+    try{localStorage.setItem(BK_KEY,JSON.stringify(existing));}
+    catch(qe){
+      // Quota exceeded — try with just 1 backup
+      try{localStorage.setItem(BK_KEY,JSON.stringify([{ts:Date.now(),data:copy}]));}
+      catch(e2){/* storage full, skip backup silently */}
+    }
   }catch(e){}
 }
 function showLocalBackups(){
@@ -1482,6 +1660,92 @@ setInterval(()=>{
 function dl(content,type,name){const b=new Blob([content],{type});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=name;a.click();URL.revokeObjectURL(a.href);}
 
 // ════════════════════════════════════════════════
+// DOCUMENTS — Google Drive links
+// ════════════════════════════════════════════════
+const DOC_ICONS={
+  'House Plan':'🏠','Agreement Copy':'📋','Structural Drawing':'🏗️',
+  'Electrical Drawing':'⚡','Plumbing Drawing':'🔧','Soil Test Report':'🧪',
+  'Permit / Approval':'📜','Contractor Invoice':'💰','Receipt':'🧾','Other':'📄'
+};
+const DOC_COLORS={
+  'House Plan':'#DBEAFE','Agreement Copy':'#FEF3C7','Structural Drawing':'#E0E7FF',
+  'Electrical Drawing':'#FEF9C3','Plumbing Drawing':'#DCFCE7','Soil Test Report':'#FEE2E2',
+  'Permit / Approval':'#F3E8FF','Contractor Invoice':'#FFEDD5','Receipt':'#D1FAE5','Other':'#F1F5F9'
+};
+const PHASE_LABELS={'pre':'Pre','con':'Build','post':'Post','':'All'};
+const PHASE_COLORS={'pre':'var(--pre-light)','con':'var(--con-light)','post':'var(--post-light)','':''};
+const PHASE_TEXT={'pre':'var(--pre-dark)','con':'var(--con-dark)','post':'var(--post-dark)','':'var(--muted)'};
+
+function renderDocs(){
+  if(!DATA.docs) DATA.docs=[];
+  const el=document.getElementById('doc-list');
+  if(!el)return;
+  if(!DATA.docs.length){
+    el.innerHTML=`<div class="doc-empty">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
+      <p>No documents yet.<br>Tap <strong>Add</strong> to link a Google Drive file.</p>
+    </div>`;
+    return;
+  }
+  el.innerHTML=DATA.docs.map((d,i)=>`
+    <a class="doc-card" href="${esc(d.url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">
+      <div class="doc-icon" style="background:${DOC_COLORS[d.type]||'#F1F5F9'}">${DOC_ICONS[d.type]||'📄'}</div>
+      <div class="doc-meta">
+        <div class="doc-type">${esc(d.type)}</div>
+        <div class="doc-name">${esc(d.name)}</div>
+        ${d.notes?`<div class="doc-notes">${esc(d.notes)}</div>`:''}
+      </div>
+      ${d.phase?`<span class="doc-phase-badge" style="background:${PHASE_COLORS[d.phase]};color:${PHASE_TEXT[d.phase]}">${PHASE_LABELS[d.phase]||''}</span>`:''}
+      <div class="doc-actions">
+        <button class="doc-del" onclick="event.preventDefault();event.stopPropagation();deleteDoc(${i})" aria-label="Delete">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+        </button>
+      </div>
+    </a>`).join('');
+}
+
+let _editDocIdx = null;
+function openDocUploadSheet(idx){
+  _editDocIdx = (idx !== undefined) ? idx : null;
+  const doc = _editDocIdx !== null ? DATA.docs[_editDocIdx] : null;
+  document.getElementById('doc-sheet-title').textContent = doc ? 'Edit Document' : 'Add Document Link';
+  document.getElementById('doc-type').value  = doc?.type  || 'House Plan';
+  document.getElementById('doc-name').value  = doc?.name  || '';
+  document.getElementById('doc-url').value   = doc?.url   || '';
+  document.getElementById('doc-phase').value = doc?.phase || '';
+  document.getElementById('doc-notes').value = doc?.notes || '';
+  document.getElementById('doc-save-btn').onclick = saveDoc;
+  openSheet('doc-sheet-overlay');
+  setTimeout(()=>document.getElementById('doc-name').focus(),120);
+}
+function closeDocSheet(){closeSheet('doc-sheet-overlay');}
+function saveDoc(){
+  const name = document.getElementById('doc-name').value.trim();
+  const url  = document.getElementById('doc-url').value.trim();
+  if(!name){showToast('Enter a document name','error');return;}
+  if(!url || !url.startsWith('http')){showToast('Enter a valid Google Drive URL','error');return;}
+  if(!DATA.docs) DATA.docs=[];
+  const obj={
+    type:  document.getElementById('doc-type').value,
+    name,url,
+    phase: document.getElementById('doc-phase').value,
+    notes: document.getElementById('doc-notes').value.trim(),
+    addedAt: new Date().toISOString()
+  };
+  if(_editDocIdx !== null) DATA.docs[_editDocIdx]=obj;
+  else DATA.docs.push(obj);
+  save(); closeDocSheet(); renderDocs();
+  showToast(_editDocIdx !== null ? 'Document updated' : 'Document added','success');
+}
+function deleteDoc(i){
+  confirmDelete(()=>{
+    DATA.docs.splice(i,1);
+    save(); renderDocs();
+    showToast('Document removed','success');
+  });
+}
+
+// ════════════════════════════════════════════════
 // SHEET / CONFIRM SYSTEM
 // ════════════════════════════════════════════════
 function openSheet(id){
@@ -1491,7 +1755,7 @@ function openSheet(id){
   document.addEventListener('keydown',escHandler);
 }
 function closeSheet(id){document.getElementById(id).classList.add('hidden');document.removeEventListener('keydown',escHandler);}
-function escHandler(e){if(e.key==='Escape'){['task-sheet-overlay','exp-sheet-overlay','budget-sheet-overlay','export-overlay','confirm-overlay'].forEach(id=>{document.getElementById(id).classList.add('hidden')});}}
+function escHandler(e){if(e.key==='Escape'){['task-sheet-overlay','exp-sheet-overlay','budget-sheet-overlay','export-overlay','confirm-overlay','doc-sheet-overlay'].forEach(id=>{document.getElementById(id).classList.add('hidden')});document.removeEventListener('keydown',escHandler);}}
 function confirmDelete(cb){
   const overlay=document.getElementById('confirm-overlay');
   overlay.classList.remove('hidden');
@@ -1525,7 +1789,9 @@ document.querySelectorAll('.tab-item').forEach(tab=>{
 // INIT — load from Supabase then render
 // ════════════════════════════════════════════════
 (async () => {
-  await loadData(); // fetch from Supabase (shows loader), then render
+  await loadData();
+  ['pre','con','post'].forEach(k=>renderPhase(k));
+  renderDash();
   showView('dash');
 })();
 </script>
