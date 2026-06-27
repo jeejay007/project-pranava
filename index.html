@@ -430,7 +430,7 @@ body{
     <div class="top-bar-title">Project <span>Pranava</span></div>
     <div class="top-bar-sub">House Construction Tracker</div>
   </div>
-  <div class="sync-wrap" id="sync-status" title="Sync status">
+  <div class="sync-wrap" id="sync-status" onclick="pullLatest()" title="Tap to sync now" style="cursor:pointer">
     <div class="sync-dot syncing" id="sync-dot"></div>
     <span class="sync-label" id="sync-label">Syncing…</span>
   </div>
@@ -719,8 +719,8 @@ let DATA = defData(); // will be replaced by loadData()
 // ════════════════════════════════════════════════
 // SUPABASE CONFIG
 // ════════════════════════════════════════════════
-const SB_URL  = 'https://morhatsumlikbnqvmfux.supabase.co';
-const SB_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1vcmhhdHN1bWxpa2JucXZtZnV4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI0NjQzNDIsImV4cCI6MjA5ODA0MDM0Mn0.lbEf-DBSRgpNyLFKA6iuMblQFmSTO80vJpC0dUtd6Ro';
+const SB_URL      = 'https://morhatsumlikbnqvmfux.supabase.co';
+const SB_KEY      = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1vcmhhdHN1bWxpa2JucXZtZnV4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI0NjQzNDIsImV4cCI6MjA5ODA0MDM0Mn0.lbEf-DBSRgpNyLFKA6iuMblQFmSTO80vJpC0dUtd6Ro';
 const SB_ENDPOINT = SB_URL + '/rest/v1/pranava_data';
 const SB_HEADERS  = {
   'apikey': SB_KEY,
@@ -729,87 +729,164 @@ const SB_HEADERS  = {
   'Prefer': 'resolution=merge-duplicates',
 };
 
-let _syncTimer = null;
-let _online = navigator.onLine;
-window.addEventListener('online',  () => { _online=true;  syncStatus('syncing'); scheduleSave(); });
+let _syncTimer   = null;
+let _saving      = false;
+let _pendingSave = false;
+let _online      = navigator.onLine;
+
+window.addEventListener('online',  () => { _online=true;  syncStatus('syncing'); flushSave(); });
 window.addEventListener('offline', () => { _online=false; syncStatus('offline'); });
+
+// Flush before tab/app closes — catches iPhone swipe-away
+window.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') flushSave();
+});
+window.addEventListener('pagehide', () => flushSave());
+window.addEventListener('beforeunload', () => flushSave());
 
 function syncStatus(state, msg) {
   const dot   = document.getElementById('sync-dot');
   const label = document.getElementById('sync-label');
   if (!dot) return;
-  dot.className   = 'sync-dot ' + state;
-  const map = { synced:'Saved', syncing:'Syncing…', error:'Error', offline:'Offline' };
+  dot.className = 'sync-dot ' + state;
+  const map = { synced:'Saved', syncing:'Syncing…', error:'Retry…', offline:'Offline' };
   label.textContent = msg || map[state] || state;
 }
 
 // ════════════════════════════════════════════════
-// LOAD — cloud first, localStorage fallback
+// LOAD — Supabase first, localStorage fallback
+// Shows a loading overlay until cloud data arrives
 // ════════════════════════════════════════════════
+function showLoadingOverlay(show) {
+  let el = document.getElementById('loading-overlay');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'loading-overlay';
+    el.style.cssText = `position:fixed;inset:0;background:rgba(248,250,252,.96);
+      z-index:9999;display:flex;flex-direction:column;align-items:center;
+      justify-content:center;gap:14px;font-family:'Fira Sans',sans-serif;
+      transition:opacity .25s ease`;
+    el.innerHTML = `
+      <div style="width:48px;height:48px;border:3px solid #E2E8F0;border-top-color:#059669;
+        border-radius:50%;animation:spin .7s linear infinite"></div>
+      <div style="font-size:.9rem;font-weight:600;color:#64748B">Loading Project Pranava…</div>
+      <style>@keyframes spin{to{transform:rotate(360deg)}}</style>`;
+    document.body.appendChild(el);
+  }
+  if (show) { el.style.opacity='1'; el.style.display='flex'; }
+  else { el.style.opacity='0'; setTimeout(()=>el.style.display='none', 250); }
+}
+
 async function loadData() {
-  // Always show something fast from localStorage first
+  // Step 1: load localStorage instantly (prevents blank flash)
   try {
     const local = localStorage.getItem(SK);
-    if (local) DATA = JSON.parse(local);
-    else DATA = defData();
+    DATA = local ? JSON.parse(local) : defData();
   } catch(e) { DATA = defData(); }
 
   if (!_online) { syncStatus('offline'); return; }
 
+  // Step 2: show loader and fetch from Supabase
+  showLoadingOverlay(true);
   syncStatus('syncing');
   try {
-    const res = await fetch(SB_ENDPOINT + '?id=eq.main&select=data', {
-      headers: SB_HEADERS, signal: AbortSignal.timeout(8000)
+    const res = await fetch(SB_ENDPOINT + '?id=eq.main&select=data,updated_at', {
+      headers: SB_HEADERS,
+      signal: AbortSignal.timeout(10000),
+      cache: 'no-store'   // always fetch fresh, never serve cached response
     });
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const rows = await res.json();
+
     if (rows.length && rows[0].data && Object.keys(rows[0].data).length > 0) {
-      DATA = rows[0].data;
-      localStorage.setItem(SK, JSON.stringify(DATA)); // keep local in sync
+      // Compare timestamps: use whichever is newer
+      const sbTime   = new Date(rows[0].updated_at).getTime();
+      const localRaw = localStorage.getItem(SK + '_ts');
+      const localTime = localRaw ? parseInt(localRaw) : 0;
+
+      if (sbTime >= localTime) {
+        // Supabase is newer (or equal) — use it
+        DATA = rows[0].data;
+        localStorage.setItem(SK, JSON.stringify(DATA));
+        localStorage.setItem(SK + '_ts', sbTime);
+      } else {
+        // Local is newer (uncommitted change) — push it up
+        await pushToSupabase();
+      }
     } else {
-      // Table is empty — push local data up
+      // DB empty — seed it with local data
       await pushToSupabase();
     }
     syncStatus('synced');
   } catch(e) {
-    console.warn('Supabase load failed, using local data:', e.message);
+    console.warn('Supabase load failed, using local:', e.message);
     syncStatus('error', 'Local only');
+  } finally {
+    showLoadingOverlay(false);
   }
 }
 
 // ════════════════════════════════════════════════
-// SAVE — debounced: local immediately, cloud 1.5s later
+// SAVE — immediate local + immediate cloud push
+// No debounce delay — every save goes to Supabase now
 // ════════════════════════════════════════════════
 function save() {
-  localStorage.setItem(SK, JSON.stringify(DATA)); // instant local save
+  const now = Date.now();
+  localStorage.setItem(SK, JSON.stringify(DATA));
+  localStorage.setItem(SK + '_ts', now);  // timestamp every local save
   syncStatus('syncing');
-  scheduleSave();
-}
-
-function scheduleSave() {
   clearTimeout(_syncTimer);
-  _syncTimer = setTimeout(pushToSupabase, 1500);
+  _syncTimer = setTimeout(flushSave, 800);  // 0.8s debounce — fast but batches rapid taps
 }
 
-async function pushToSupabase() {
+async function flushSave() {
+  clearTimeout(_syncTimer);
   if (!_online) { syncStatus('offline'); return; }
+  if (_saving)  { _pendingSave = true; return; }   // queue if already in-flight
+  _saving = true;
   try {
     const res = await fetch(SB_ENDPOINT, {
       method: 'POST',
       headers: SB_HEADERS,
-      body: JSON.stringify({ id: 'main', data: DATA, updated_at: new Date().toISOString() }),
-      signal: AbortSignal.timeout(10000)
+      body: JSON.stringify({
+        id: 'main',
+        data: DATA,
+        updated_at: new Date().toISOString()
+      }),
+      signal: AbortSignal.timeout(12000),
+      keepalive: true   // survives page close on mobile
     });
-    if (!res.ok) {
-      const err = await res.text();
-      throw new Error('HTTP ' + res.status + ': ' + err);
-    }
+    if (!res.ok) throw new Error('HTTP ' + res.status);
     syncStatus('synced');
   } catch(e) {
     console.error('Supabase save failed:', e.message);
-    syncStatus('error', 'Retry…');
-    // Retry once after 5s
-    setTimeout(pushToSupabase, 5000);
+    syncStatus('error');
+    setTimeout(flushSave, 4000);  // auto-retry in 4s
+  } finally {
+    _saving = false;
+    if (_pendingSave) { _pendingSave = false; flushSave(); }
+  }
+}
+
+// Pull latest from Supabase (manual refresh button)
+async function pullLatest() {
+  syncStatus('syncing');
+  try {
+    const res = await fetch(SB_ENDPOINT + '?id=eq.main&select=data,updated_at', {
+      headers: SB_HEADERS, signal: AbortSignal.timeout(10000), cache: 'no-store'
+    });
+    const rows = await res.json();
+    if (rows.length && rows[0].data && Object.keys(rows[0].data).length > 0) {
+      DATA = rows[0].data;
+      localStorage.setItem(SK, JSON.stringify(DATA));
+      localStorage.setItem(SK + '_ts', new Date(rows[0].updated_at).getTime());
+      showView(CV);
+      syncStatus('synced');
+      showToast('Synced latest data', 'success');
+    }
+  } catch(e) {
+    syncStatus('error');
+    showToast('Sync failed — check connection', 'error');
   }
 }
 
@@ -1266,9 +1343,8 @@ document.querySelectorAll('.tab-item').forEach(tab=>{
 // INIT — load from Supabase then render
 // ════════════════════════════════════════════════
 (async () => {
-  showView('dash'); // render with local data immediately
-  await loadData(); // fetch cloud data
-  showView('dash'); // re-render with cloud data
+  await loadData(); // fetch from Supabase (shows loader), then render
+  showView('dash');
 })();
 </script>
 </body>
