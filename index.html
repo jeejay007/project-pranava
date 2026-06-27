@@ -726,7 +726,6 @@ const SB_HEADERS  = {
   'apikey': SB_KEY,
   'Authorization': 'Bearer ' + SB_KEY,
   'Content-Type': 'application/json',
-  'Prefer': 'resolution=merge-duplicates',
 };
 
 let _syncTimer   = null;
@@ -845,27 +844,47 @@ async function flushSave() {
   if (_saving)  { _pendingSave = true; return; }   // queue if already in-flight
   _saving = true;
   try {
-    const res = await fetch(SB_ENDPOINT, {
-      method: 'POST',
+    const res = await fetch(SB_ENDPOINT + '?id=eq.main', {
+      method: 'PATCH',
       headers: SB_HEADERS,
       body: JSON.stringify({
-        id: 'main',
         data: DATA,
         updated_at: new Date().toISOString()
       }),
       signal: AbortSignal.timeout(12000),
       keepalive: true   // survives page close on mobile
     });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
+    if (!res.ok) {
+      const txt = await res.text().catch(()=>'');
+      throw new Error('HTTP ' + res.status + (txt ? ': ' + txt.slice(0,120) : ''));
+    }
     syncStatus('synced');
+    hideSyncError();
   } catch(e) {
     console.error('Supabase save failed:', e.message);
     syncStatus('error');
+    showSyncError(e.message);
     setTimeout(flushSave, 4000);  // auto-retry in 4s
   } finally {
     _saving = false;
     if (_pendingSave) { _pendingSave = false; flushSave(); }
   }
+}
+
+function showSyncError(msg) {
+  let el = document.getElementById('sync-error-banner');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'sync-error-banner';
+    el.style.cssText = 'position:fixed;bottom:calc(var(--tab-h) + var(--safe-bottom) + 8px);left:12px;right:12px;background:#FEE2E2;color:#991B1B;border:1px solid #FECACA;border-radius:10px;padding:10px 14px;font-size:13px;z-index:3000;word-break:break-all;';
+    document.body.appendChild(el);
+  }
+  el.textContent = '⚠ Sync error: ' + msg;
+  el.style.display = 'block';
+}
+function hideSyncError() {
+  const el = document.getElementById('sync-error-banner');
+  if (el) el.style.display = 'none';
 }
 
 // Pull latest from Supabase (manual refresh button)
