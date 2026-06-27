@@ -947,26 +947,29 @@ function showLoadingOverlay(show) {
 }
 
 async function loadData() {
-  // Step 1: load localStorage instantly (correct data, prevents blank flash)
-  let localData = null;
+  // Step 1: load localStorage instantly
   let localTime = 0;
   try {
     const raw = localStorage.getItem(SK);
     const tsRaw = localStorage.getItem(SK + '_ts');
-    localData = raw ? _ensureSchema(JSON.parse(raw)) : null;
+    DATA = raw ? _ensureSchema(JSON.parse(raw)) : defData();
     localTime = tsRaw ? parseInt(tsRaw) : 0;
-    DATA = localData || defData();
   } catch(e) { DATA = defData(); }
 
   if (!_online) { syncStatus('offline'); return; }
 
-  // Step 2: fetch from Supabase — but ONLY update DATA if Supabase is strictly newer
+  // Safety net: always hide overlay after 12s max, never leave user stuck
+  const overlayTimeout = setTimeout(() => {
+    showLoadingOverlay(false);
+    syncStatus('error', 'Slow connection');
+  }, 12000);
+
   showLoadingOverlay(true);
   syncStatus('syncing');
   try {
     const res = await fetch(SB_ENDPOINT + '?id=eq.main&select=data,updated_at', {
       headers: SB_HEADERS,
-      signal: AbortSignal.timeout(10000),
+      signal: AbortSignal.timeout(9000),
       cache: 'no-store'
     });
     if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -974,29 +977,30 @@ async function loadData() {
 
     if (rows.length && rows[0].data && Object.keys(rows[0].data).length > 0) {
       const sbTime = new Date(rows[0].updated_at).getTime();
-
       if (localTime > sbTime) {
-        // Local is strictly newer — push to Supabase, keep local data
-        await flushSave();
+        // Local is newer — push to Supabase in background, keep local data
+        DATA = _ensureSchema(DATA);
+        setTimeout(flushSave, 500); // non-blocking — don't await
       } else if (sbTime > localTime) {
-        // Supabase is strictly newer — use it
         DATA = _ensureSchema(rows[0].data);
         localStorage.setItem(SK, JSON.stringify(DATA));
         localStorage.setItem(SK + '_ts', sbTime);
         updateSyncTime(rows[0].updated_at);
       } else {
-        // Equal timestamps — local and Supabase are in sync, keep local (no overwrite)
+        // Equal — already in sync
         updateSyncTime(new Date(localTime).toISOString());
       }
     } else {
-      // DB empty — push local data up
-      await flushSave();
+      // DB empty — push local up in background
+      setTimeout(flushSave, 500);
     }
     syncStatus('synced');
   } catch(e) {
     console.warn('Supabase load failed, using local:', e.message);
     syncStatus('error', 'Local only');
+    showSyncError('Could not reach server: ' + e.message);
   } finally {
+    clearTimeout(overlayTimeout);
     showLoadingOverlay(false);
   }
 }
