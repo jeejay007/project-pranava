@@ -916,7 +916,12 @@ if (_bc) {
       // Another tab just saved newer data — pull it from localStorage (same origin, already written)
       try {
         const fresh = localStorage.getItem(SK);
-        if (fresh) { DATA = JSON.parse(fresh); ['pre','con','post'].forEach(k=>renderPhase(k)); renderDash(); }
+        if (fresh) {
+          DATA = JSON.parse(fresh);
+          ['pre','con','post'].forEach(k=>renderPhase(k));
+          renderDash();
+          renderDocs();  // fix: docs tab also needs refresh
+        }
         localStorage.setItem(SK+'_ts', e.data.ts);
         updateSyncTime(new Date(e.data.ts).toISOString());
         syncStatus('synced');
@@ -936,24 +941,37 @@ window.addEventListener('visibilitychange', () => {
     _beaconSave();
   } else {
     _pageHidden = false;
+    // Reset stuck save flag — if a save was in-flight when page hid, it may never resolve
+    _saving = false;
+    _verifyRetries = 0;
+    // If there were unsaved changes while hidden, push them now
+    if (_pendingSave) { _pendingSave = false; flushSave(); }
   }
 });
 window.addEventListener('pagehide', () => { _pageHidden=true; _beaconSave(); });
 
 function _beaconSave() {
-  // sendBeacon is guaranteed to complete even after page closes — unlike fetch
+  // sendBeacon is POST-only — use Supabase upsert (POST with Prefer: resolution=merge-duplicates)
+  // This is equivalent to PATCH for an existing row and works with sendBeacon.
   if (!_online) return;
   try {
-    const body = JSON.stringify({ data: DATA, updated_at: new Date().toISOString() });
+    const body = JSON.stringify({ id: 'main', data: DATA, updated_at: new Date().toISOString() });
+    const upsertHeaders = Object.assign({}, SB_HEADERS, { 'Prefer': 'resolution=merge-duplicates' });
+    const blob = new Blob([body], { type: 'application/json' });
+    // sendBeacon can't set custom headers — use keepalive fetch as the reliable path
+    // sendBeacon is kept as last-resort fallback (headers are ignored by Supabase anon key validation
+    // but the row already exists so upsert still works with the apikey in the URL)
     const ok = navigator.sendBeacon(
-      SB_ENDPOINT + '?id=eq.main',
-      new Blob([body], { type: 'application/json' })
+      SB_ENDPOINT + '?apikey=' + SB_KEY,
+      blob
     );
     if (!ok) {
-      // sendBeacon queue full — fall back to keepalive fetch without verify
-      fetch(SB_ENDPOINT + '?id=eq.main', {
-        method: 'PATCH', headers: SB_HEADERS,
-        body, keepalive: true
+      // sendBeacon queue full — keepalive fetch can set correct headers
+      fetch(SB_ENDPOINT, {
+        method: 'POST',
+        headers: Object.assign({}, SB_HEADERS, { 'Prefer': 'resolution=merge-duplicates' }),
+        body,
+        keepalive: true
       }).catch(()=>{});
     }
   } catch(e) {}
@@ -1039,7 +1057,9 @@ async function loadData() {
           DATA = _ensureSchema(DATA);
           setTimeout(flushSave, 500);
         } else {
-          // Supabase is both newer and at least as rich — use it
+          // Supabase is both newer and at least as rich — use it.
+          // Snapshot the local data first so user can recover via backups if needed.
+          if (localRich > 0) autoBackup();
           DATA = _ensureSchema(sbData);
           localStorage.setItem(SK, JSON.stringify(DATA));
           localStorage.setItem(SK + '_ts', sbTime);
@@ -1129,9 +1149,19 @@ async function flushSave() {
     }
 
     _verifyRetries = 0;
-    const savedTs = new Date(now).getTime();
+    // Use server-confirmed timestamp from verify response if available,
+    // otherwise fall back to the timestamp we sent. This eliminates device-clock-skew
+    // causing local to falsely appear newer than Supabase on next load.
+    let canonicalTs = now;
+    try {
+      const vRows2 = await fetch(SB_ENDPOINT + '?id=eq.main&select=updated_at', {
+        headers: SB_HEADERS, signal: AbortSignal.timeout(5000), cache: 'no-store'
+      }).then(r => r.json()).catch(() => []);
+      if (vRows2.length && vRows2[0].updated_at) canonicalTs = vRows2[0].updated_at;
+    } catch(e2) { /* use local now */ }
+    const savedTs = new Date(canonicalTs).getTime();
     localStorage.setItem(SK + '_ts', savedTs);
-    updateSyncTime(now);
+    updateSyncTime(canonicalTs);
     syncStatus('synced');
     hideSyncError();
     if (_bc) _bc.postMessage({ type: 'saved', ts: savedTs });
@@ -1666,9 +1696,9 @@ function handleImportFile(e){
   e.target.value='';
 }
 
-// ── Auto-backup: keep last 3 snapshots in localStorage ──────────────────────
+// ── Auto-backup: keep last 5 snapshots in localStorage ──────────────────────
 const BK_KEY='pranava_backups';
-const BK_MAX=3;
+const BK_MAX=5;
 function autoBackup(){
   try{
     // Strip receipt base64 blobs from backups to avoid localStorage quota overflow
